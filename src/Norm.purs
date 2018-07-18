@@ -8,6 +8,10 @@ import Data.Rational (Rational, fromInt, (%))
 
 data Norm = Inf | Padic Int
 
+isPadic :: Norm -> Boolean
+isPadic Inf = false
+isPadic (Padic _) = true
+
 takeNorm :: Norm -> Int -> Rational
 takeNorm _ 0 = fromInt 0
 takeNorm Inf n = fromInt $ abs n

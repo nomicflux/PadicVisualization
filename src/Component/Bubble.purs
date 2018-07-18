@@ -35,8 +35,8 @@ modifyBubble f b@(Bubble bubble) =
   let (Bubble new) = f b
   in Bubble (new { oldValue = Just bubble.value })
 
-incValue :: Int -> Bubble -> Bubble
-incValue max = modifyBubble (\b -> setValue ((getValue b + 1) `mod` max) b)
+incValue :: Bubble -> Bubble
+incValue = modifyBubble (\b -> setValue (getValue b + 1) b)
 
-decValue :: Int -> Bubble -> Bubble
-decValue max = modifyBubble (\b -> setValue ((getValue b - 1) `mod` max) b)
+decValue :: Bubble -> Bubble
+decValue = modifyBubble (\b -> setValue (getValue b - 1) b)
