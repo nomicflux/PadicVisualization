@@ -10,7 +10,7 @@
     "purescript-prelude": "^4.1.0",
     "purescript-console": "^4.1.0",
     "purescript-effect": "^2.0.0",
-    "halogen-helpers": "git://github.com/nomicflux/HalogenHelpers.git"
+    "purescript-halogen-helpers": "git://github.com/nomicflux/HalogenHelpers.git"
   },
   "devDependencies": {
     "purescript-psci-support": "^4.0.0"
