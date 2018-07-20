@@ -8,13 +8,12 @@ import Component.Animation as An
 import Component.Bubble (Bubble)
 import Component.Bubble as B
 import Data.Array as A
-import Data.Int (round, toNumber)
+import Data.Int (toNumber)
 import Data.List.Lazy (List)
 import Data.List.Lazy as L
 import Data.Maybe (Maybe(..))
 import Data.Rational (Rational, fromInt)
 import Data.Rational as R
-import Debug.Trace as D
 import Halogen as H
 import Halogen.HTML as HH
 import HalogenHelpers.Coordinates (Coordinates, addOffset)
@@ -112,14 +111,15 @@ renderBubble :: Model -> Bubble -> H.ComponentHTML Query
 renderBubble model bubble =
   let coords = getCoordinates model bubble
       hue = 360.0 * toNumber (numInPlace model $ B.getValue bubble) / (toNumber model.maxInt)
-      alpha = 0.5 * An.proportionalTick model.time
-      color = C.toHexString (C.hsva hue 1.0 (alpha + 0.5) alpha)
+      alpha = 0.1 + 0.9 * (Math.abs $ Math.cos $ Math.pi * An.proportionalTick model.time)
+      color = C.toHexString (C.hsv hue 1.0 1.0)
   in
-   SVG.circle [ SVG.cx $ round coords.x
-              , SVG.cy $ round coords.y
+   SVG.circle [ SVG.cx coords.x
+              , SVG.cy coords.y
               , SVG.r 1
               , SVG.stroke color
               , SVG.fill color
+              , SVG.opacity alpha
               ]
 
 render :: Model -> H.ComponentHTML Query

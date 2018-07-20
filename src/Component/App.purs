@@ -13,7 +13,7 @@ import Norm (Norm(..))
 baseInput :: CC.Input
 baseInput = { size: 1024
             , maxInt: 1000
-            , windingNumber: 729
+            , windingNumber: 749
             , norm: Padic 3
             }
 
