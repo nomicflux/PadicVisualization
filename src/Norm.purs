@@ -17,5 +17,5 @@ takeNorm _ 0 = fromInt 0
 takeNorm Inf n = fromInt $ abs n
 takeNorm (Padic p) n = 1 % (p `pow` takeNormPower n)
   where takeNormPower m
-          | n `mod` p == 0 = 1 + takeNormPower (m / p)
+          | m `mod` p == 0 = 1 + takeNormPower (m / p)
           | otherwise = 0

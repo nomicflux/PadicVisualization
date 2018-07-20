@@ -1,0 +1,59 @@
+.world-id {
+    font-size: 10px;
+}
+
+.world-svg {
+    border: 3px ridge black;
+}
+
+.world {
+    fill: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar button {
+    display: block;
+}
+
+.button-success,
+.button-error,
+.button-warning,
+.button-secondary {
+    color: white;
+    border-radius: 4px;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+}
+
+.button-success {
+    background: rgb(28, 184, 65); /* this is a green */
+}
+
+.button-error {
+    background: rgb(202, 60, 60); /* this is a maroon */
+}
+
+.button-warning {
+    background: rgb(223, 117, 20); /* this is an orange */
+}
+
+.button-secondary {
+    background: rgb(66, 184, 221); /* this is a light blue */
+}
+
+.relation {
+    stroke: grey;
+    fill: transparent;
+}
+
+.relation.relation-adding {
+    stroke: #666;
+}
+
+.relation.relation-selected {
+    stroke: #333;
+    stroke-width: 2;
+}
+
+.relation.relation-generated {
+    stroke: #999;
+    stroke-dasharray: 2;
+}

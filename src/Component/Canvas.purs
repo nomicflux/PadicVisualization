@@ -2,21 +2,29 @@ module Component.Canvas where
 
 import Prelude
 
-import Component.Animation (Tick, incTick)
+import Color as C
+import Component.Animation (Tick, incTick, startTick)
 import Component.Animation as An
 import Component.Bubble (Bubble)
 import Component.Bubble as B
-import Data.Int (toNumber)
+import Data.Array as A
+import Data.Int (round, toNumber)
 import Data.List (List)
 import Data.List as L
 import Data.Maybe (Maybe(..))
 import Data.Rational (Rational, fromInt)
 import Data.Rational as R
+import Debug.Trace as D
 import Halogen as H
 import Halogen.HTML as HH
-import HalogenHelpers.Coordinates (Coordinates)
+import HalogenHelpers.Coordinates (Coordinates, addOffset)
+import HalogenHelpers.SVG as SVG
 import Math as Math
-import Norm (Norm(..), isPadic)
+import Norm (Norm, isPadic)
+
+data Slot = Slot
+derive instance eqSlot :: Eq Slot
+derive instance ordSlot :: Ord Slot
 
 type Model = { maxInt :: Int
              , norm :: Norm
@@ -29,20 +37,27 @@ type Model = { maxInt :: Int
 type Input = { size :: Int
              , maxInt :: Int
              , windingNumber :: Int
+             , norm :: Norm
              }
 
 initialModel :: Input -> Model
 initialModel input = { maxInt: input.maxInt
-                     , norm: Inf
+                     , norm: input.norm
                      , bubbles: B.mkBubble <$> (L.range 0 input.maxInt)
                      , time: Nothing
                      , size: input.size
                      , windingNumber: input.windingNumber
                      }
 
+scale :: Int
+scale = 100
+
+maxValue :: Model -> Int
+maxValue model =
+  if isPadic model.norm then 1 else model.maxInt
+
 getR :: Model -> Rational -> Rational
-getR model value =
-  if isPadic model.norm then value else value / fromInt model.size
+getR model value = value / fromInt (maxValue model)
 
 getTheta :: Model -> Int -> Number
 getTheta model value = Math.pi * 2.0 * (toNumber value) / (toNumber model.windingNumber)
@@ -50,8 +65,8 @@ getTheta model value = Math.pi * 2.0 * (toNumber value) / (toNumber model.windin
 polarToCartesian :: Rational -> Number -> Coordinates
 polarToCartesian r theta =
   let r' = R.toNumber r
-  in { x: r' * Math.cos theta
-     , y: r' * Math.sin theta
+  in { x: toNumber scale * r' * Math.cos theta
+     , y: toNumber scale * r' * Math.sin theta
      }
 
 getNewCoordinates :: Model -> Bubble -> Coordinates
@@ -68,12 +83,15 @@ getOldCoordinates model bubble =
 
 getCoordinates :: Model -> Bubble -> Coordinates
 getCoordinates model bubble =
-  let mold = getOldCoordinates model bubble
-      new = getCoordinates model bubble
+  let offset = { top: toNumber (2 * scale)
+               , left: toNumber (2 * scale)
+               }
+      mold = (flip addOffset offset) <$> getOldCoordinates model bubble
+      new = addOffset (getNewCoordinates model bubble) offset
   in case mold of
     Nothing -> new
     Just old ->
-      let interpolater = An.cosInterpolate model.time
+      let interpolater = An.sinInterpolate model.time
       in { x: interpolater new.x old.x
          , y: interpolater new.y old.y
          }
@@ -85,15 +103,39 @@ component = H.component { initialState: initialModel
                         , receiver: const Nothing
                         }
 
+renderBubble :: Model -> Bubble -> H.ComponentHTML Query
+renderBubble model bubble =
+  let coords = getCoordinates model bubble
+      hue = 360.0 * toNumber (B.getValue bubble) / (toNumber model.maxInt)
+      color = C.toHexString (C.hsva hue 1.0 1.0 0.3)
+  in
+   SVG.circle [ SVG.cx $ round coords.x
+              , SVG.cy $ round coords.y
+              , SVG.r 1
+              , SVG.stroke color
+              , SVG.fill color
+              ]
+
 render :: Model -> H.ComponentHTML Query
-render model = HH.div_ []
+render model =
+  let dblSizeStr = show $ 4 * scale
+  in
+   HH.div_ [ SVG.svg [ SVG.width model.size
+                     , SVG.height model.size
+                     , SVG.viewBox $ A.intercalate " " [ "0"
+                                                       , "0"
+                                                       , dblSizeStr
+                                                       , dblSizeStr
+                                                       ]
+                     ]
+             (renderBubble model <$> A.fromFoldable model.bubbles) ]
 
 data Query a = ChangeMax Int (Unit -> a)
              | ChangeWinding Int (Unit -> a)
              | ChangeNorm Norm (Unit -> a)
              | IncValues a
              | DecValues a
-             | MoveTick a
+             | MoveTick (Unit -> a)
 
 data Message = Noop
 
@@ -132,7 +174,13 @@ eval (DecValues next) = do
   H.modify_ $ addBubble newBubble
   H.modify_ filterBubbles
   pure next
-eval (MoveTick next) = do
+eval (MoveTick reply) = do
   tick <- H.gets (_.time)
-  H.modify_ (_ { time = tick >>= incTick })
-  pure next
+  let newTick = tick >>= incTick
+  case newTick of
+    Just _ -> do
+      H.modify_ (_ { time = newTick })
+      pure (reply unit)
+    Nothing -> do
+      H.modify_ (_ { time = Just startTick })
+      eval (IncValues (reply unit))

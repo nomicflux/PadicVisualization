@@ -8,13 +8,16 @@ import Math as Math
 
 newtype Tick = Tick Int
 
+startTick :: Tick
+startTick = Tick 0
+
 incTick :: Tick -> Maybe Tick
 incTick t@(Tick n)
-  | atMax t = Just (Tick (n + 1))
-  | otherwise = Nothing
+  | atMax t = Nothing
+  | otherwise = Just (Tick (n + 1))
 
 maxTick :: Tick
-maxTick = Tick 100
+maxTick = Tick 32
 
 atMax :: Tick -> Boolean
 atMax (Tick n) =
@@ -32,13 +35,13 @@ interpolate :: (Number -> Number) ->
                Number -> Number -> Number
 interpolate f t to from =
   let prop = f (proportionalTick t)
-  in (to - from) * prop
-
-cosInterpolate :: Maybe Tick -> Number -> Number -> Number
-cosInterpolate = interpolate (Math.cos <<< (\x -> Math.pi / 4.0 * x))
+  in (to - from) * prop + from
 
 sinInterpolate :: Maybe Tick -> Number -> Number -> Number
-sinInterpolate = interpolate (Math.sin <<< (1.0 - _) <<< (\x -> Math.pi / 4.0 * x))
+sinInterpolate = interpolate (Math.sin <<< (\x -> Math.pi / 2.0 * x))
+
+cosInterpolate :: Maybe Tick -> Number -> Number -> Number
+cosInterpolate = interpolate (Math.cos <<< (1.0 - _) <<< (\x -> Math.pi / 2.0 * x))
 
 linInterpolate :: Maybe Tick -> Number -> Number -> Number
 linInterpolate = interpolate identity
