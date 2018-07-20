@@ -9,12 +9,11 @@ import Component.Bubble (Bubble)
 import Component.Bubble as B
 import Data.Array as A
 import Data.Int (round, toNumber)
-import Data.List (List)
-import Data.List as L
+import Data.List.Lazy (List)
+import Data.List.Lazy as L
 import Data.Maybe (Maybe(..))
 import Data.Rational (Rational, fromInt)
 import Data.Rational as R
-import Debug.Trace as D
 import Halogen as H
 import Halogen.HTML as HH
 import HalogenHelpers.Coordinates (Coordinates, addOffset)
@@ -32,6 +31,7 @@ type Model = { maxInt :: Int
              , time :: Maybe Tick
              , size :: Int
              , windingNumber :: Int
+             , numIncs :: Int
              }
 
 type Input = { size :: Int
@@ -47,6 +47,7 @@ initialModel input = { maxInt: input.maxInt
                      , time: Nothing
                      , size: input.size
                      , windingNumber: input.windingNumber
+                     , numIncs: 0
                      }
 
 scale :: Int
@@ -103,10 +104,13 @@ component = H.component { initialState: initialModel
                         , receiver: const Nothing
                         }
 
+numInPlace :: Model -> Int -> Int
+numInPlace model x = (x - model.numIncs) `mod` (model.maxInt + 1)
+
 renderBubble :: Model -> Bubble -> H.ComponentHTML Query
 renderBubble model bubble =
   let coords = getCoordinates model bubble
-      hue = 360.0 * toNumber (B.getValue bubble) / (toNumber model.maxInt)
+      hue = 360.0 * toNumber (numInPlace model $ B.getValue bubble) / (toNumber model.maxInt)
       color = C.toHexString (C.hsva hue 1.0 1.0 0.3)
   in
    SVG.circle [ SVG.cx $ round coords.x
@@ -146,15 +150,19 @@ filterBubbles model =
 
 addBubble :: Bubble -> Model -> Model
 addBubble bubble model =
-  model { bubbles = L.Cons bubble model.bubbles }
+  model { bubbles = L.cons bubble model.bubbles }
 
 incBubbles :: Model -> Model
 incBubbles model =
-  model { bubbles = B.incValue <$> model.bubbles }
+  model { bubbles = B.incValue <$> model.bubbles
+        , numIncs = model.numIncs + 1
+        }
 
 decBubbles :: Model -> Model
 decBubbles model =
-  model { bubbles = B.decValue <$> model.bubbles }
+  model { bubbles = B.decValue <$> model.bubbles
+        , numIncs = model.numIncs - 1
+        }
 
 eval :: forall m. Query ~> H.ComponentDSL Model Query Message m
 eval (ChangeMax max reply) = H.modify_ (_ { maxInt = max }) *> pure (reply unit)
