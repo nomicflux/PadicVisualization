@@ -17,7 +17,7 @@ incTick t@(Tick n)
   | otherwise = Just (Tick (n + 1))
 
 maxTick :: Tick
-maxTick = Tick 8
+maxTick = Tick 16
 
 atMax :: Tick -> Boolean
 atMax (Tick n) =

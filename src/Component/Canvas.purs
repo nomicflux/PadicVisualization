@@ -120,7 +120,7 @@ renderBubble :: Model -> Bubble -> H.ComponentHTML Query
 renderBubble model bubble =
   let coords = getCoordinates model bubble
       hue = (360.0 * 45.0 * toNumber (numInPlace model $ B.getValue bubble) / (toNumber model.maxInt))
-      alpha = 0.3 + 0.7 * (square $ Math.cos $ Math.pi * An.proportionalTick model.time)
+      alpha = 0.2 + 0.8 * (square $ Math.cos $ Math.pi * An.proportionalTick model.time)
       color = C.toHexString (C.hsv hue 1.0 1.0)
   in
    SVG.circle [ SVG.cx coords.x
@@ -143,7 +143,7 @@ render model =
                                                        , dblSizeStr
                                                        ]
                      ]
-             (renderBubble model <$> A.fromFoldable model.bubbles) ]
+             (renderBubble model <$> model.bubbles) ]
 
 data Query a = ChangeMax Int (Unit -> a)
              | ChangeWinding Int (Unit -> a)
@@ -163,8 +163,7 @@ replaceBubble maxInt def bubble =
 
 incBubble :: forall h. Int -> Bubble -> STArray h Bubble -> Int -> ST h Unit
 incBubble maxInt def bubbles idx = do
-  _ <- AST.modify idx B.incValue bubbles
-  _ <- AST.modify idx (replaceBubble maxInt def) bubbles
+  _ <- AST.modify idx (replaceBubble maxInt def <<< B.incValue) bubbles
   pure unit
 
 incAll :: Model -> Model
