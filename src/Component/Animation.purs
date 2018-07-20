@@ -9,7 +9,7 @@ import Math as Math
 newtype Tick = Tick Int
 
 startTick :: Tick
-startTick = Tick 0
+startTick = Tick 1
 
 incTick :: Tick -> Maybe Tick
 incTick t@(Tick n)
@@ -17,7 +17,7 @@ incTick t@(Tick n)
   | otherwise = Just (Tick (n + 1))
 
 maxTick :: Tick
-maxTick = Tick 32
+maxTick = Tick 8
 
 atMax :: Tick -> Boolean
 atMax (Tick n) =

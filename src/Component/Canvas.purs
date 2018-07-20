@@ -7,10 +7,16 @@ import Component.Animation (Tick, incTick, startTick)
 import Component.Animation as An
 import Component.Bubble (Bubble)
 import Component.Bubble as B
+import Control.Monad (void)
+import Control.Monad.ST (ST)
+import Control.Monad.ST as ST
+import Data.Array ((!!))
 import Data.Array as A
+import Data.Array.ST (STArray)
+import Data.Array.ST as AST
+import Data.Array.ST.Iterator (Iterator)
+import Data.Array.ST.Iterator as AST
 import Data.Int (toNumber)
-import Data.List.Lazy (List)
-import Data.List.Lazy as L
 import Data.Maybe (Maybe(..))
 import Data.Rational (Rational, fromInt)
 import Data.Rational as R
@@ -27,7 +33,7 @@ derive instance ordSlot :: Ord Slot
 
 type Model = { maxInt :: Int
              , norm :: Norm
-             , bubbles :: List Bubble
+             , bubbles :: Array Bubble
              , time :: Maybe Tick
              , size :: Int
              , windingNumber :: Int
@@ -43,7 +49,7 @@ type Input = { size :: Int
 initialModel :: Input -> Model
 initialModel input = { maxInt: input.maxInt
                      , norm: input.norm
-                     , bubbles: B.mkBubble <$> (L.range 0 input.maxInt)
+                     , bubbles: B.mkBubble <$> (A.range 0 input.maxInt)
                      , time: Nothing
                      , size: input.size
                      , windingNumber: input.windingNumber
@@ -107,11 +113,14 @@ component = H.component { initialState: initialModel
 numInPlace :: Model -> Int -> Int
 numInPlace model x = (x - model.numIncs) `mod` (model.maxInt + 1)
 
+square :: Number -> Number
+square n = n * n
+
 renderBubble :: Model -> Bubble -> H.ComponentHTML Query
 renderBubble model bubble =
   let coords = getCoordinates model bubble
-      hue = 360.0 * toNumber (numInPlace model $ B.getValue bubble) / (toNumber model.maxInt)
-      alpha = 0.1 + 0.9 * (Math.abs $ Math.cos $ Math.pi * An.proportionalTick model.time)
+      hue = (360.0 * 45.0 * toNumber (numInPlace model $ B.getValue bubble) / (toNumber model.maxInt))
+      alpha = 0.3 + 0.7 * (square $ Math.cos $ Math.pi * An.proportionalTick model.time)
       color = C.toHexString (C.hsv hue 1.0 1.0)
   in
    SVG.circle [ SVG.cx coords.x
@@ -145,26 +154,56 @@ data Query a = ChangeMax Int (Unit -> a)
 
 data Message = Noop
 
-filterBubbles :: Model -> Model
-filterBubbles model =
-  let newBubbles = L.filter (\b -> let v = B.getValue b in v <= model.maxInt && v >= 0) model.bubbles
-  in model { bubbles = newBubbles }
+replaceBubble :: Int -> Bubble -> Bubble -> Bubble
+replaceBubble maxInt def bubble =
+  let v = B.getValue bubble
+  in if v <= maxInt && v >= 0
+     then bubble
+     else def
 
-addBubble :: Bubble -> Model -> Model
-addBubble bubble model =
-  model { bubbles = L.cons bubble model.bubbles }
+incBubble :: forall h. Int -> Bubble -> STArray h Bubble -> Int -> ST h Unit
+incBubble maxInt def bubbles idx = do
+  _ <- AST.modify idx B.incValue bubbles
+  _ <- AST.modify idx (replaceBubble maxInt def) bubbles
+  pure unit
 
-incBubbles :: Model -> Model
-incBubbles model =
-  model { bubbles = B.incValue <$> model.bubbles
-        , numIncs = model.numIncs + 1
-        }
+incAll :: Model -> Model
+incAll model =
+  let
+    def = B.mkBubble 0
 
-decBubbles :: Model -> Model
-decBubbles model =
-  model { bubbles = B.decValue <$> model.bubbles
-        , numIncs = model.numIncs - 1
-        }
+    newBubblesST :: forall h. Array Bubble -> ST h (Array Bubble)
+    newBubblesST bubbles = do
+      bubblesST <- AST.thaw bubbles
+      _ <- ST.for 0 (A.length bubbles) (incBubble model.maxInt def bubblesST)
+      AST.freeze bubblesST
+    newBubbles = ST.run (newBubblesST model.bubbles)
+  in
+   model { bubbles = newBubbles
+         , numIncs = model.numIncs + 1
+         }
+
+decBubble :: forall h. Int -> Bubble -> STArray h Bubble -> Int -> ST h Unit
+decBubble maxInt def bubbles idx = do
+  _ <- AST.modify idx B.decValue bubbles
+  _ <- AST.modify idx (replaceBubble maxInt def) bubbles
+  pure unit
+
+decAll :: Model -> Model
+decAll model =
+  let
+    def = B.mkBubble model.maxInt
+
+    newBubblesST :: forall h. Array Bubble -> ST h (Array Bubble)
+    newBubblesST bubbles = do
+      bubblesST <- AST.thaw bubbles
+      _ <- ST.for 0 (A.length bubbles) (decBubble model.maxInt def bubblesST)
+      AST.freeze bubblesST
+    newBubbles = ST.run (newBubblesST model.bubbles)
+  in
+   model { bubbles = newBubbles
+         , numIncs = model.numIncs - 1
+         }
 
 eval :: forall m. Query ~> H.ComponentDSL Model Query Message m
 eval (ChangeMax max reply) = H.modify_ (_ { maxInt = max }) *> pure (reply unit)
@@ -172,17 +211,11 @@ eval (ChangeWinding winding reply) = H.modify_ (_ { windingNumber = winding }) *
 eval (ChangeNorm norm reply) = H.modify_ (_ { norm = norm }) *> pure (reply unit)
 eval (IncValues next) = do
   model <- H.get
-  let newBubble = B.mkBubble 0
-  H.modify_ incBubbles
-  H.modify_ $ addBubble newBubble
-  H.modify_ filterBubbles
+  H.modify_ incAll
   pure next
 eval (DecValues next) = do
   model <- H.get
-  let newBubble = B.mkBubble model.maxInt
-  H.modify_ decBubbles
-  H.modify_ $ addBubble newBubble
-  H.modify_ filterBubbles
+  H.modify_ decAll
   pure next
 eval (MoveTick reply) = do
   tick <- H.gets (_.time)
