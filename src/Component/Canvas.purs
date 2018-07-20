@@ -14,6 +14,7 @@ import Data.List.Lazy as L
 import Data.Maybe (Maybe(..))
 import Data.Rational (Rational, fromInt)
 import Data.Rational as R
+import Debug.Trace as D
 import Halogen as H
 import Halogen.HTML as HH
 import HalogenHelpers.Coordinates (Coordinates, addOffset)
@@ -92,7 +93,7 @@ getCoordinates model bubble =
   in case mold of
     Nothing -> new
     Just old ->
-      let interpolater = An.sinInterpolate model.time
+      let interpolater = An.linInterpolate model.time
       in { x: interpolater new.x old.x
          , y: interpolater new.y old.y
          }
@@ -111,7 +112,8 @@ renderBubble :: Model -> Bubble -> H.ComponentHTML Query
 renderBubble model bubble =
   let coords = getCoordinates model bubble
       hue = 360.0 * toNumber (numInPlace model $ B.getValue bubble) / (toNumber model.maxInt)
-      color = C.toHexString (C.hsva hue 1.0 1.0 0.3)
+      alpha = 0.5 * An.proportionalTick model.time
+      color = C.toHexString (C.hsva hue 1.0 (alpha + 0.5) alpha)
   in
    SVG.circle [ SVG.cx $ round coords.x
               , SVG.cy $ round coords.y
