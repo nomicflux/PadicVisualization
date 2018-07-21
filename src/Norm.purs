@@ -3,10 +3,15 @@ module Norm where
 import Prelude
 
 import Data.Int (pow)
+import Data.Maybe (Maybe(..))
 import Data.Ord (abs)
 import Data.Rational (Rational, fromInt, (%))
 
 data Norm = Inf | Padic Int
+
+getPrime :: Norm -> Maybe Int
+getPrime Inf = Nothing
+getPrime (Padic p) = Just p
 
 isPadic :: Norm -> Boolean
 isPadic Inf = false

@@ -2,34 +2,36 @@ module Component.Canvas where
 
 import Prelude
 
-import Color as C
+import Color as Co
 import Component.Animation (Tick, incTick, startTick)
 import Component.Animation as An
 import Component.Bubble (Bubble)
 import Component.Bubble as B
-import Control.Monad (void)
 import Control.Monad.ST (ST)
 import Control.Monad.ST as ST
-import Data.Array ((!!))
 import Data.Array as A
 import Data.Array.ST (STArray)
 import Data.Array.ST as AST
-import Data.Array.ST.Iterator (Iterator)
-import Data.Array.ST.Iterator as AST
 import Data.Int (toNumber)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Rational (Rational, fromInt)
 import Data.Rational as R
 import Halogen as H
 import Halogen.HTML as HH
-import HalogenHelpers.Coordinates (Coordinates, addOffset)
+import HalogenHelpers.Coordinates (Coordinates)
+import HalogenHelpers.Coordinates as C
 import HalogenHelpers.SVG as SVG
 import Math as Math
-import Norm (Norm, isPadic)
+import Norm (Norm, getPrime, isPadic)
+import PadicVector as PV
+import PolarCoordinates (PolarCoordinates, mkPolar)
+import PolarCoordinates as PC
 
 data Slot = Slot
 derive instance eqSlot :: Eq Slot
 derive instance ordSlot :: Ord Slot
+
+data CoordType = Circular | PadicVector
 
 type Model = { maxInt :: Int
              , norm :: Norm
@@ -38,12 +40,14 @@ type Model = { maxInt :: Int
              , size :: Int
              , windingNumber :: Int
              , numIncs :: Int
+             , coordType :: CoordType
              }
 
 type Input = { size :: Int
              , maxInt :: Int
              , windingNumber :: Int
              , norm :: Norm
+             , coordType :: CoordType
              }
 
 initialModel :: Input -> Model
@@ -54,6 +58,7 @@ initialModel input = { maxInt: input.maxInt
                      , size: input.size
                      , windingNumber: input.windingNumber
                      , numIncs: 0
+                     , coordType: input.coordType
                      }
 
 scale :: Int
@@ -69,32 +74,29 @@ getR model value = value / fromInt (maxValue model)
 getTheta :: Model -> Int -> Number
 getTheta model value = Math.pi * 2.0 * (toNumber value) / (toNumber model.windingNumber)
 
-polarToCartesian :: Rational -> Number -> Coordinates
-polarToCartesian r theta =
-  let r' = R.toNumber r
-  in { x: toNumber scale * r' * Math.cos theta
-     , y: toNumber scale * r' * Math.sin theta
-     }
-
-getNewCoordinates :: Model -> Bubble -> Coordinates
+getNewCoordinates :: Model -> Bubble -> PolarCoordinates
 getNewCoordinates model bubble =
   let r = getR model (B.getNormedValue model.norm bubble)
       theta = getTheta model (B.getValue bubble)
-  in polarToCartesian r theta
+  in {r: R.toNumber r, theta}
 
-getOldCoordinates :: Model -> Bubble -> Maybe Coordinates
+getOldCoordinates :: Model -> Bubble -> Maybe PolarCoordinates
 getOldCoordinates model bubble =
-  let mr = getR model <$> (B.getNormedOldValue model.norm bubble)
+  let mr = (R.toNumber <<< getR model) <$> (B.getNormedOldValue model.norm bubble)
       mtheta = getTheta model <$> (B.getOldValue bubble)
-  in polarToCartesian <$> mr <*> mtheta
+  in mkPolar <$> mr <*> mtheta
 
-getCoordinates :: Model -> Bubble -> Coordinates
-getCoordinates model bubble =
+normalizeCoords :: Coordinates -> Coordinates
+normalizeCoords coords =
   let offset = { top: toNumber (2 * scale)
                , left: toNumber (2 * scale)
                }
-      mold = (flip addOffset offset) <$> getOldCoordinates model bubble
-      new = addOffset (getNewCoordinates model bubble) offset
+  in C.addOffset (C.scale (toNumber scale) coords) offset
+
+getCircleCoordinates :: Model -> Bubble -> Coordinates
+getCircleCoordinates model bubble =
+  let mold = (normalizeCoords <<< PC.polarToCartesian) <$> getOldCoordinates model bubble
+      new = normalizeCoords $ PC.polarToCartesian $ (getNewCoordinates model bubble)
   in case mold of
     Nothing -> new
     Just old ->
@@ -102,6 +104,20 @@ getCoordinates model bubble =
       in { x: interpolater new.x old.x
          , y: interpolater new.y old.y
          }
+
+getPadicVectorCoordinates :: Model -> Bubble -> Coordinates
+getPadicVectorCoordinates model bubble =
+  let p = fromMaybe 0 (getPrime model.norm)
+      mold = (normalizeCoords <<< PV.toVector p) <$> B.getOldValue bubble
+      new = normalizeCoords $ PV.toVector p $ B.getValue bubble
+  in case mold of
+    Nothing -> new
+    Just old ->
+      let interpolater = An.linInterpolate model.time
+      in { x: interpolater new.x old.x
+         , y: interpolater new.y old.y
+         }
+
 
 component :: forall m. H.Component HH.HTML Query Input Message m
 component = H.component { initialState: initialModel
@@ -116,12 +132,15 @@ numInPlace model x = (x - model.numIncs) `mod` (model.maxInt + 1)
 square :: Number -> Number
 square n = n * n
 
-renderBubble :: Model -> Bubble -> H.ComponentHTML Query
-renderBubble model bubble =
-  let coords = getCoordinates model bubble
-      hue = (360.0 * 45.0 * toNumber (numInPlace model $ B.getValue bubble) / (toNumber model.maxInt))
-      alpha = 0.2 + 0.8 * (square $ Math.cos $ Math.pi * An.proportionalTick model.time)
-      color = C.toHexString (C.hsv hue 1.0 1.0)
+renderBubble :: Number -> Model -> Bubble -> H.ComponentHTML Query
+renderBubble alpha model bubble =
+  let coords = case model.coordType of
+        Circular -> getCircleCoordinates model bubble
+        PadicVector -> getPadicVectorCoordinates model bubble
+      hue = case model.coordType of
+        Circular -> (360.0 * 45.0 * toNumber (numInPlace model $ B.getValue bubble) / (toNumber model.maxInt))
+        PadicVector -> (360.0 * 45.0 * toNumber (B.getValue bubble) / (toNumber model.maxInt))
+      color = Co.toHexString (Co.hsv hue 1.0 1.0)
   in
    SVG.circle [ SVG.cx coords.x
               , SVG.cy coords.y
@@ -134,6 +153,7 @@ renderBubble model bubble =
 render :: Model -> H.ComponentHTML Query
 render model =
   let dblSizeStr = show $ 4 * scale
+      alpha = 0.2 + 0.8 * (square $ Math.cos $ Math.pi * An.proportionalTick model.time)
   in
    HH.div_ [ SVG.svg [ SVG.width model.size
                      , SVG.height model.size
@@ -143,7 +163,7 @@ render model =
                                                        , dblSizeStr
                                                        ]
                      ]
-             (renderBubble model <$> model.bubbles) ]
+             (renderBubble alpha model <$> model.bubbles) ]
 
 data Query a = ChangeMax Int (Unit -> a)
              | ChangeWinding Int (Unit -> a)
