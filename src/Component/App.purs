@@ -12,10 +12,11 @@ import Norm (Norm(..))
 
 baseInput :: CC.Input
 baseInput = { size: 1024
-            , maxInt: 625 * 5
-            , windingNumber: 625 * 5
-            , norm: Padic 5
+            , maxInt: 729
+            , windingNumber: 729
+            , norm: Padic 3
             , coordType: CC.PadicVector
+            , maxTick: 32
             }
 
 data Query a = SetNorm Norm a
