@@ -33,20 +33,39 @@ proportionalTick (Just (Tick n)) = do
 interpolate :: forall m. MonadReader Int m =>
                (Number -> Number) ->
                Maybe Tick ->
-               Number -> Number ->
-               m Number
-interpolate f t to from = do
+               m (Number -> Number ->
+                  Number)
+interpolate f t = do
   prop <- proportionalTick t
-  pure $ (to - from) * f prop + from
+  pure $ \to from -> (to - from) * f prop + from
 
 sinInterpolate :: forall m. MonadReader Int m =>
-                  Maybe Tick -> Number -> Number -> m Number
+                  Maybe Tick -> m (Number -> Number -> Number)
 sinInterpolate = interpolate (Math.sin <<< (\x -> Math.pi / 2.0 * x))
 
 cosInterpolate :: forall m. MonadReader Int m =>
-                  Maybe Tick -> Number -> Number -> m Number
-cosInterpolate = interpolate (Math.cos <<< (1.0 - _) <<< (\x -> Math.pi / 2.0 * x))
+                  Maybe Tick -> m (Number -> Number -> Number)
+cosInterpolate = interpolate ((1.0 - _) <<< Math.cos <<< (\x -> Math.pi / 2.0 * x))
+
+cubicInterpolate :: forall m. MonadReader Int m =>
+                    Maybe Tick -> m (Number -> Number -> Number)
+cubicInterpolate =
+  let stretch x = x * 2.0 - 1.0
+      unstretch x = (x + 1.0) * 0.5
+  in
+   interpolate $ unstretch <<< (\x -> Math.pow x 3.0) <<< stretch
+
+sqrtInterpolate :: forall m. MonadReader Int m =>
+                   Maybe Tick -> m (Number -> Number -> Number)
+sqrtInterpolate =
+  let stretch x = x * 2.0 - 1.0
+      unstretch x = (x + 1.0) * 0.5
+      cbrt x = if x >= 0.0
+               then Math.pow x 0.5
+               else -1.0 * Math.pow (-x) 0.5
+  in
+   interpolate $ unstretch <<< cbrt <<< stretch
 
 linInterpolate :: forall m. MonadReader Int m =>
-                  Maybe Tick -> Number -> Number -> m Number
+                  Maybe Tick -> m (Number -> Number -> Number)
 linInterpolate = interpolate identity

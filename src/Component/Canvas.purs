@@ -16,7 +16,7 @@ import Data.Array.ST as AST
 import Data.Int (toNumber)
 import Data.Map (Map)
 import Data.Map as M
-import Data.Maybe (Maybe(..), fromMaybe, maybe)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Rational (Rational, fromInt)
 import Data.Rational as R
 import Data.Tuple (Tuple(..))
@@ -46,8 +46,7 @@ type Model = { maxInt :: Int
              , windingNumber :: Int
              , numIncs :: Int
              , coordType :: CoordType
-             , circleCache :: Map Int Coordinates
-             , padicCache :: Map Int Coordinates
+             , cache :: Map Int Coordinates
              , maxTick :: Int
              }
 
@@ -68,13 +67,12 @@ initialModel input = { maxInt: input.maxInt
                      , windingNumber: input.windingNumber
                      , numIncs: 0
                      , coordType: input.coordType
-                     , circleCache: M.empty
-                     , padicCache: M.empty
+                     , cache: M.empty
                      , maxTick: input.maxTick
                      }
 
 scale :: Int
-scale = 100
+scale = 75
 
 maxValue :: Model -> Int
 maxValue model =
@@ -110,17 +108,17 @@ getPadicCoord model n =
       p = fromMaybe 0 (getPrime model.norm)
   in normalizeCoords $ PV.toVector p $ B.getValue b
 
-getCoordinates :: Map Int Coordinates -> Int -> Maybe Tick -> Bubble -> Coordinates
-getCoordinates cache maxTick time bubble =
+getCoordinates :: (Number -> Number -> Number) ->
+                  Map Int Coordinates -> Bubble -> Coordinates
+getCoordinates interpolater cache bubble =
   let mold = B.getOldValue bubble >>= \x -> M.lookup x cache
       new = fromMaybe baseCoordinates $ M.lookup (B.getValue bubble) cache
   in case mold of
     Nothing -> new
     Just old ->
-      let interpolater n o = Reader.runReader (An.linInterpolate time n o) maxTick
-      in { x: interpolater new.x old.x
-         , y: interpolater new.y old.y
-         }
+      { x: interpolater new.x old.x
+      , y: interpolater new.y old.y
+      }
 
 component :: forall m. H.Component HH.HTML Query Input Message m
 component = H.lifecycleComponent { initialState: initialModel
@@ -137,17 +135,17 @@ numInPlace model x = (x - model.numIncs) `mod` (model.maxInt + 1)
 square :: Number -> Number
 square n = n * n
 
-renderBubble :: Number -> Model -> Bubble -> Tuple String (H.ComponentHTML Query)
-renderBubble alpha model bubble =
-  let cache = case model.coordType of
-        Circular -> model.circleCache
-        PadicVector -> model.padicCache
-      coords = getCoordinates cache model.maxTick model.time bubble
-      hue = case model.coordType of
-        Circular -> (360.0 * 45.0 * toNumber (numInPlace model $ B.getValue bubble) / (toNumber model.maxInt))
-        PadicVector -> (360.0 * 45.0 * toNumber (B.getValue bubble) / (toNumber model.maxInt))
+renderBubble :: (Bubble -> Coordinates) ->
+                Number -> Int -> Model ->
+                Bubble ->
+                Tuple String (H.ComponentHTML Query)
+renderBubble coordGetter alpha p model bubble =
+  let coords = coordGetter bubble
+      step = 360.0 / toNumber (model.maxInt / p)
+      b = B.getValue bubble
+      hue = step * toNumber (numInPlace model b)
       color = Co.toHexString (Co.hsv hue 1.0 1.0)
-      key = A.intercalate "-" [ show $ B.getValue bubble ]
+      key = "bubble" <> (show b)
   in
    Tuple key $ SVG.circle [ SVG.cx coords.x
                           , SVG.cy coords.y
@@ -161,7 +159,10 @@ render :: Model -> H.ComponentHTML Query
 render model =
   let dblSizeStr = show $ 4 * scale
       propTick = Reader.runReader (An.proportionalTick model.time) model.maxTick
-      alpha = 0.2 + 0.8 * (square $ Math.cos $ Math.pi * propTick)
+      alpha = 0.2 + 0.7 * (square $ Math.cos $ Math.pi * propTick)
+      interpolater = Reader.runReader (An.sqrtInterpolate model.time) model.maxTick
+      coordGetter = getCoordinates interpolater model.cache
+      p = fromMaybe 0 $ getPrime model.norm
   in
    HH.div_ [ SVG.svg [ SVG.width model.size
                      , SVG.height model.size
@@ -171,7 +172,7 @@ render model =
                                                        , dblSizeStr
                                                        ]
                      ]
-             (renderBubble alpha model <$> model.bubbles) ]
+             (renderBubble coordGetter alpha p model <$> model.bubbles) ]
 
 data Query a = ChangeMax Int (Unit -> a)
              | ChangeWinding Int (Unit -> a)
@@ -262,11 +263,10 @@ eval (InitCaches next) = do
       emptyCache :: Map Int Coordinates
       emptyCache = M.empty
 
-      circles :: Map Int Coordinates
-      circles = A.foldl (\acc x -> M.insert x (getCircleCoord model x) acc) emptyCache ints
-      padics :: Map Int Coordinates
-      padics = A.foldl (\acc x -> M.insert x (getPadicCoord model x) acc) emptyCache ints
-  H.modify_ (_ { circleCache = circles
-               , padicCache = padics
-               })
+      cache = case model.coordType of
+        Circular ->
+          A.foldl (\acc x -> M.insert x (getCircleCoord model x) acc) emptyCache ints
+        PadicVector ->
+          A.foldl (\acc x -> M.insert x (getPadicCoord model x) acc) emptyCache ints
+  H.modify_ (_ { cache = cache })
   pure next

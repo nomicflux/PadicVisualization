@@ -11,7 +11,7 @@ import Halogen.Aff as HA
 import Halogen.VDom.Driver (runUI)
 
 tickDelay :: Milliseconds
-tickDelay = Milliseconds 16.7
+tickDelay = Milliseconds (1.0 / 60.0)
 
 main :: Effect Unit
 main = HA.runHalogenAff do
