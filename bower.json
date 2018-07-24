@@ -14,7 +14,8 @@
     "purescript-rationals": "^5.0.0",
     "purescript-coroutines": "^5.0.0",
     "purescript-colors": "^5.0.0",
-    "purescript-arrays": "^5.0.0"
+    "purescript-arrays": "^5.0.0",
+    "purescript-filterable": "^3.0.1"
   },
   "devDependencies": {
     "purescript-psci-support": "^4.0.0"

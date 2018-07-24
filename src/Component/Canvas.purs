@@ -19,7 +19,6 @@ import Data.Map as M
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Rational (Rational, fromInt)
 import Data.Rational as R
-import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.HTML as HH
 import HalogenHelpers.Coordinates (Coordinates)
@@ -43,19 +42,21 @@ type Model = { maxInt :: Int
              , bubbles :: Array Bubble
              , time :: Maybe Tick
              , size :: Int
-             , windingNumber :: Int
              , numIncs :: Int
              , coordType :: CoordType
              , cache :: Map Int Coordinates
              , maxTick :: Int
+             , animate :: Boolean
+             , scale :: Int
+             , currMaxId :: Int
              }
 
 type Input = { size :: Int
              , maxInt :: Int
-             , windingNumber :: Int
              , norm :: Norm
              , coordType :: CoordType
              , maxTick :: Int
+             , scale :: Int
              }
 
 initialModel :: Input -> Model
@@ -64,15 +65,14 @@ initialModel input = { maxInt: input.maxInt
                      , bubbles: B.mkBubble <$> (A.range 0 input.maxInt)
                      , time: Nothing
                      , size: input.size
-                     , windingNumber: input.windingNumber
                      , numIncs: 0
                      , coordType: input.coordType
                      , cache: M.empty
                      , maxTick: input.maxTick
+                     , animate: true
+                     , scale: input.scale
+                     , currMaxId: -input.maxInt
                      }
-
-scale :: Int
-scale = 75
 
 maxValue :: Model -> Int
 maxValue model =
@@ -82,7 +82,7 @@ getR :: Model -> Rational -> Rational
 getR model value = value / fromInt (maxValue model)
 
 getTheta :: Model -> Int -> Number
-getTheta model value = Math.pi * 2.0 * (toNumber value) / (toNumber model.windingNumber)
+getTheta model value = Math.pi * 2.0 * (toNumber value) / (toNumber model.maxInt)
 
 toPolar :: Model -> Bubble -> PolarCoordinates
 toPolar model bubble =
@@ -90,8 +90,8 @@ toPolar model bubble =
       theta = getTheta model (B.getValue bubble)
   in {r: R.toNumber r, theta}
 
-normalizeCoords :: Coordinates -> Coordinates
-normalizeCoords coords =
+normalizeCoords :: Int -> Coordinates -> Coordinates
+normalizeCoords scale coords =
   let offset = { top: toNumber (2 * scale)
                , left: toNumber (2 * scale)
                }
@@ -100,18 +100,18 @@ normalizeCoords coords =
 getCircleCoord :: Model -> Int -> Coordinates
 getCircleCoord model n =
   let b = B.mkBubble n
-  in normalizeCoords $ PC.polarToCartesian $ (toPolar model b)
+  in normalizeCoords model.scale $ PC.polarToCartesian (toPolar model b)
 
 getPadicCoord :: Model -> Int -> Coordinates
 getPadicCoord model n =
   let b = B.mkBubble n
       p = fromMaybe 0 (getPrime model.norm)
-  in normalizeCoords $ PV.toVector p $ B.getValue b
+  in normalizeCoords model.scale $ PV.toVector model.maxInt p (B.getValue b)
 
 getCoordinates :: (Number -> Number -> Number) ->
                   Map Int Coordinates -> Bubble -> Coordinates
 getCoordinates interpolater cache bubble =
-  let mold = B.getOldValue bubble >>= \x -> M.lookup x cache
+  let mold = B.getOldValue bubble >>= flip M.lookup cache
       new = fromMaybe baseCoordinates $ M.lookup (B.getValue bubble) cache
   in case mold of
     Nothing -> new
@@ -138,26 +138,26 @@ square n = n * n
 renderBubble :: (Bubble -> Coordinates) ->
                 Number -> Int -> Model ->
                 Bubble ->
-                Tuple String (H.ComponentHTML Query)
+                H.ComponentHTML Query
 renderBubble coordGetter alpha p model bubble =
   let coords = coordGetter bubble
       step = 360.0 / toNumber (model.maxInt / p)
       b = B.getValue bubble
       hue = step * toNumber (numInPlace model b)
       color = Co.toHexString (Co.hsv hue 1.0 1.0)
-      key = "bubble" <> (show b)
+      --key = A.intercalate "-" [ show $ b + model.currMaxId ]
   in
-   Tuple key $ SVG.circle [ SVG.cx coords.x
-                          , SVG.cy coords.y
-                          , SVG.r 1
-                          , SVG.stroke color
-                          , SVG.fill color
-                          , SVG.opacity alpha
-                          ]
+   SVG.circle [ SVG.cx coords.x
+              , SVG.cy coords.y
+              , SVG.r 1
+              , SVG.stroke color
+              , SVG.fill color
+              , SVG.opacity alpha
+              ]
 
 render :: Model -> H.ComponentHTML Query
 render model =
-  let dblSizeStr = show $ 4 * scale
+  let dblSizeStr = show $ 4 * model.scale
       propTick = Reader.runReader (An.proportionalTick model.time) model.maxTick
       alpha = 0.2 + 0.7 * (square $ Math.cos $ Math.pi * propTick)
       interpolater = Reader.runReader (An.sqrtInterpolate model.time) model.maxTick
@@ -175,8 +175,11 @@ render model =
              (renderBubble coordGetter alpha p model <$> model.bubbles) ]
 
 data Query a = ChangeMax Int (Unit -> a)
-             | ChangeWinding Int (Unit -> a)
+             | ChangeTick Int (Unit -> a)
              | ChangeNorm Norm (Unit -> a)
+             | ChangeScale Int (Unit -> a)
+             | ToggleRepr (Unit -> a)
+             | ToggleAnimation (Unit -> a)
              | IncValues a
              | DecValues a
              | InitCaches a
@@ -234,30 +237,8 @@ decAll model =
          , numIncs = model.numIncs - 1
          }
 
-eval :: forall m. Query ~> H.ComponentDSL Model Query Message m
-eval (ChangeMax max reply) = H.modify_ (_ { maxInt = max }) *> pure (reply unit)
-eval (ChangeWinding winding reply) = H.modify_ (_ { windingNumber = winding }) *> pure (reply unit)
-eval (ChangeNorm norm reply) = H.modify_ (_ { norm = norm }) *> pure (reply unit)
-eval (IncValues next) = do
-  model <- H.get
-  H.modify_ incAll
-  pure next
-eval (DecValues next) = do
-  model <- H.get
-  H.modify_ decAll
-  pure next
-eval (MoveTick reply) = do
-  maxTick <- H.gets (_.maxTick)
-  tick <- H.gets (_.time)
-  let newTick = tick >>= \t -> Reader.runReader (incTick t) maxTick
-  case newTick of
-    Just _ -> do
-      H.modify_ (_ { time = newTick })
-      pure (reply unit)
-    Nothing -> do
-      H.modify_ (_ { time = Just startTick })
-      eval (IncValues (reply unit))
-eval (InitCaches next) = do
+reinitCache :: forall a m. a -> H.ComponentDSL Model Query Message m a
+reinitCache next =  do
   model <- H.get
   let ints = A.range 0 model.maxInt
       emptyCache :: Map Int Coordinates
@@ -269,4 +250,51 @@ eval (InitCaches next) = do
         PadicVector ->
           A.foldl (\acc x -> M.insert x (getPadicCoord model x) acc) emptyCache ints
   H.modify_ (_ { cache = cache })
+  H.modify_ increaseMaxId
   pure next
+
+increaseMaxId :: Model -> Model
+increaseMaxId model = model { currMaxId = model.currMaxId + model.maxInt + 1 }
+
+toggleAnimation :: Model -> Model
+toggleAnimation model = model { animate = not model.animate }
+
+toggleRepr :: Model -> Model
+toggleRepr model =
+  let newRepr = case model.coordType of
+        PadicVector -> Circular
+        Circular -> PadicVector
+  in model { coordType = newRepr }
+
+eval :: forall m. Query ~> H.ComponentDSL Model Query Message m
+eval (ChangeMax max reply) = H.modify_ (_ { maxInt = max }) *> reinitCache (reply unit)
+eval (ChangeNorm norm reply) = H.modify_ (_ { norm = norm }) *> reinitCache (reply unit)
+eval (ChangeTick tick reply) =
+  H.modify_ (_ { maxTick = tick } ) *> pure (reply unit)
+eval (ChangeScale scale reply) =
+  H.modify_ (_ { scale = scale } ) *> reinitCache (reply unit)
+eval (ToggleRepr reply) = H.modify_ toggleRepr *> reinitCache (reply unit)
+eval (ToggleAnimation reply) = H.modify_ toggleAnimation *> reinitCache (reply unit)
+eval (IncValues next) = do
+  model <- H.get
+  H.modify_ incAll
+  pure next
+eval (DecValues next) = do
+  model <- H.get
+  H.modify_ decAll
+  pure next
+eval (MoveTick reply) = do
+  model <- H.get
+  case model.animate of
+    false -> pure (reply unit)
+    true -> do
+      let newTick = model.time >>= \t -> Reader.runReader (incTick t) model.maxTick
+      case newTick of
+        Just _ -> do
+          H.modify_ (_ { time = newTick })
+          pure (reply unit)
+        Nothing -> do
+          H.modify_ (_ { time = Just startTick })
+          eval (IncValues (reply unit))
+eval (InitCaches next) =
+  reinitCache next

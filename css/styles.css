@@ -1,15 +1,3 @@
-.world-id {
-    font-size: 10px;
-}
-
-.world-svg {
-    border: 3px ridge black;
-}
-
-.world {
-    fill: rgba(255, 255, 255, 0.1);
-}
-
 .sidebar button {
     display: block;
 }
@@ -39,21 +27,6 @@
     background: rgb(66, 184, 221); /* this is a light blue */
 }
 
-.relation {
-    stroke: grey;
-    fill: transparent;
-}
-
-.relation.relation-adding {
-    stroke: #666;
-}
-
-.relation.relation-selected {
-    stroke: #333;
-    stroke-width: 2;
-}
-
-.relation.relation-generated {
-    stroke: #999;
-    stroke-dasharray: 2;
+.attr-numeric {
+    width: 4em;
 }

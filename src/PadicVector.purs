@@ -4,19 +4,18 @@ import Data.Eq ((==))
 import Data.Int (pow, toNumber)
 import Data.List (List)
 import Data.List as L
-import Data.Maybe (Maybe(..))
-import Data.Ord ((<), (>), (>=))
-import Data.Tuple (Tuple(..))
+import Data.List.Lazy as LL
+import Data.Monoid ((<>))
 import HalogenHelpers.Coordinates (Coordinates)
 import Math as Math
 import PolarCoordinates (PolarCoordinates, mkPolar, polarToCartesian)
-import Prelude (mod, otherwise, ($), (*), (+), (-), (/), (<=))
+import Prelude (mod, otherwise, (*), (+), (-), (/))
 
 padicRep :: Int -> Int -> List Int
 padicRep p x = go x
  where
    go y
-     | y == 0 = L.Nil
+     | y == 0 = L.singleton 0
      | otherwise =
        let m = y `mod` p
        in L.Cons m (go ((y - m) / p))
@@ -32,15 +31,17 @@ calcStep p n d =
       theta = Math.tau / toNumber p * toNumber d
   in mkPolar r theta
 
-toCoordList :: Int -> Int -> List PolarCoordinates
-toCoordList p x =
+toCoordList :: Int -> Int -> Int -> List PolarCoordinates
+toCoordList maxLength p x =
   let padic = padicRep p x
-  in L.mapWithIndex (calcStep p) padic
+      extra = L.fromFoldable (LL.replicate (maxLength - (L.length padic)) 0)
+  in L.mapWithIndex (calcStep p) (padic <> extra)
 
 baseCoordinates :: Coordinates
 baseCoordinates = {x: 0.0, y: 0.0}
 
-toVector :: Int -> Int -> Coordinates
-toVector p x =
-  let cl = toCoordList p x
+toVector :: Int -> Int -> Int -> Coordinates
+toVector max p x =
+  let maxP = padicRep p max
+      cl = toCoordList (L.length maxP) p x
   in L.foldl (\acc next -> addCoords acc (polarToCartesian next)) baseCoordinates cl
