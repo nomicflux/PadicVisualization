@@ -19,11 +19,12 @@ import Data.Map as M
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Rational (Rational, fromInt)
 import Data.Rational as R
+import Data.Tuple (Tuple(..))
 import Halogen as H
 import Halogen.HTML as HH
 import HalogenHelpers.Coordinates (Coordinates)
 import HalogenHelpers.Coordinates as C
-import HalogenHelpers.SVG as SVG
+import HalogenHelpers.SVG.Keyed as SVG
 import Math as Math
 import Norm (Norm, getPrime, isPadic)
 import PadicVector (baseCoordinates)
@@ -48,6 +49,7 @@ type Model = { maxInt :: Int
              , maxTick :: Int
              , animate :: Boolean
              , scale :: Int
+             , zoom :: Number
              , currMaxId :: Int
              }
 
@@ -57,12 +59,16 @@ type Input = { size :: Int
              , coordType :: CoordType
              , maxTick :: Int
              , scale :: Int
+             , zoom :: Number
              }
+
+mkBubbles :: Int -> Array Bubble
+mkBubbles maxInt = B.mkBubble <$> (A.range 0 maxInt)
 
 initialModel :: Input -> Model
 initialModel input = { maxInt: input.maxInt
                      , norm: input.norm
-                     , bubbles: B.mkBubble <$> (A.range 0 input.maxInt)
+                     , bubbles: mkBubbles input.maxInt
                      , time: Nothing
                      , size: input.size
                      , numIncs: 0
@@ -71,6 +77,7 @@ initialModel input = { maxInt: input.maxInt
                      , maxTick: input.maxTick
                      , animate: true
                      , scale: input.scale
+                     , zoom: input.zoom
                      , currMaxId: -input.maxInt
                      }
 
@@ -90,23 +97,23 @@ toPolar model bubble =
       theta = getTheta model (B.getValue bubble)
   in {r: R.toNumber r, theta}
 
-normalizeCoords :: Int -> Coordinates -> Coordinates
-normalizeCoords scale coords =
-  let offset = { top: toNumber (2 * scale)
-               , left: toNumber (2 * scale)
+normalizeCoords :: Model -> Coordinates -> Coordinates
+normalizeCoords model coords =
+  let offset = { top: model.zoom * toNumber model.scale
+               , left: model.zoom * toNumber model.scale
                }
-  in C.addOffset (C.scale (toNumber scale) coords) offset
+  in C.addOffset (C.scale (toNumber model.scale) coords) offset
 
 getCircleCoord :: Model -> Int -> Coordinates
 getCircleCoord model n =
   let b = B.mkBubble n
-  in normalizeCoords model.scale $ PC.polarToCartesian (toPolar model b)
+  in normalizeCoords model $ PC.polarToCartesian (toPolar model b)
 
 getPadicCoord :: Model -> Int -> Coordinates
 getPadicCoord model n =
   let b = B.mkBubble n
       p = fromMaybe 0 (getPrime model.norm)
-  in normalizeCoords model.scale $ PV.toVector model.maxInt p (B.getValue b)
+  in normalizeCoords model $ PV.toVector model.maxInt p (B.getValue b)
 
 getCoordinates :: (Number -> Number -> Number) ->
                   Map Int Coordinates -> Bubble -> Coordinates
@@ -138,26 +145,26 @@ square n = n * n
 renderBubble :: (Bubble -> Coordinates) ->
                 Number -> Int -> Model ->
                 Bubble ->
-                H.ComponentHTML Query
+                Tuple String (H.ComponentHTML Query)
 renderBubble coordGetter alpha p model bubble =
   let coords = coordGetter bubble
       step = 360.0 / toNumber (model.maxInt / p)
       b = B.getValue bubble
       hue = step * toNumber (numInPlace model b)
       color = Co.toHexString (Co.hsv hue 1.0 1.0)
-      --key = A.intercalate "-" [ show $ b + model.currMaxId ]
+      key = show b
   in
-   SVG.circle [ SVG.cx coords.x
-              , SVG.cy coords.y
-              , SVG.r 1
-              , SVG.stroke color
-              , SVG.fill color
-              , SVG.opacity alpha
-              ]
+   Tuple key $ SVG.circle [ SVG.cx coords.x
+                          , SVG.cy coords.y
+                          , SVG.r 1
+                          , SVG.stroke color
+                          , SVG.fill color
+                          , SVG.opacity alpha
+                          ]
 
 render :: Model -> H.ComponentHTML Query
 render model =
-  let dblSizeStr = show $ 4 * model.scale
+  let dblSizeStr = show $ 2.0 * model.zoom * toNumber model.scale
       propTick = Reader.runReader (An.proportionalTick model.time) model.maxTick
       alpha = 0.2 + 0.7 * (square $ Math.cos $ Math.pi * propTick)
       interpolater = Reader.runReader (An.sqrtInterpolate model.time) model.maxTick
@@ -178,6 +185,7 @@ data Query a = ChangeMax Int (Unit -> a)
              | ChangeTick Int (Unit -> a)
              | ChangeNorm Norm (Unit -> a)
              | ChangeScale Int (Unit -> a)
+             | ChangeZoom Number (Unit -> a)
              | ToggleRepr (Unit -> a)
              | ToggleAnimation (Unit -> a)
              | IncValues a
@@ -266,13 +274,20 @@ toggleRepr model =
         Circular -> PadicVector
   in model { coordType = newRepr }
 
+changeMax :: Int -> Model -> Model
+changeMax maxInt model = model { maxInt = maxInt
+                               , bubbles = mkBubbles maxInt
+                               }
+
 eval :: forall m. Query ~> H.ComponentDSL Model Query Message m
-eval (ChangeMax max reply) = H.modify_ (_ { maxInt = max }) *> reinitCache (reply unit)
+eval (ChangeMax max reply) = H.modify_ (changeMax max) *> reinitCache (reply unit)
 eval (ChangeNorm norm reply) = H.modify_ (_ { norm = norm }) *> reinitCache (reply unit)
 eval (ChangeTick tick reply) =
   H.modify_ (_ { maxTick = tick } ) *> pure (reply unit)
 eval (ChangeScale scale reply) =
   H.modify_ (_ { scale = scale } ) *> reinitCache (reply unit)
+eval (ChangeZoom zoom reply) =
+  H.modify_ (_ { zoom = zoom } ) *> reinitCache (reply unit)
 eval (ToggleRepr reply) = H.modify_ toggleRepr *> reinitCache (reply unit)
 eval (ToggleAnimation reply) = H.modify_ toggleAnimation *> reinitCache (reply unit)
 eval (IncValues next) = do

@@ -30,3 +30,15 @@
 .attr-numeric {
     width: 4em;
 }
+
+.description {
+    font-style: italic;
+    font-size: 0.8em;
+    color: #222;
+}
+
+.input-div {
+    padding-left: 5px;
+    padding-top: 10px;
+    padding-right: 10px;
+}
