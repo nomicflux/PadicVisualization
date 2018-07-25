@@ -46,6 +46,7 @@ type Model = { maxInt :: Int
              , numIncs :: Int
              , coordType :: CoordType
              , cache :: Map Int Coordinates
+             , colorCache :: Map Int String
              , maxTick :: Int
              , animate :: Boolean
              , scale :: Int
@@ -74,6 +75,7 @@ initialModel input = { maxInt: input.maxInt
                      , numIncs: 0
                      , coordType: input.coordType
                      , cache: M.empty
+                     , colorCache: M.empty
                      , maxTick: input.maxTick
                      , animate: true
                      , scale: input.scale
@@ -142,16 +144,22 @@ numInPlace model x = (x - model.numIncs) `mod` (model.maxInt + 1)
 square :: Number -> Number
 square n = n * n
 
+mkColor :: Model -> Int -> String
+mkColor model value =
+  let p = fromMaybe 0 $ getPrime model.norm
+      step = 360.0 / toNumber (model.maxInt / p)
+      hue = step * toNumber (numInPlace model value)
+  in Co.toHexString (Co.hsv hue 1.0 1.0)
+
 renderBubble :: (Bubble -> Coordinates) ->
-                Number -> Int -> Model ->
+                (Int -> String) ->
+                Number ->
                 Bubble ->
                 Tuple String (H.ComponentHTML Query)
-renderBubble coordGetter alpha p model bubble =
+renderBubble coordGetter colorGetter alpha bubble =
   let coords = coordGetter bubble
-      step = 360.0 / toNumber (model.maxInt / p)
       b = B.getValue bubble
-      hue = step * toNumber (numInPlace model b)
-      color = Co.toHexString (Co.hsv hue 1.0 1.0)
+      color = colorGetter b
       key = show b
   in
    Tuple key $ SVG.circle [ SVG.cx coords.x
@@ -169,7 +177,7 @@ render model =
       alpha = 0.2 + 0.7 * (square $ Math.cos $ Math.pi * propTick)
       interpolater = Reader.runReader (An.sqrtInterpolate model.time) model.maxTick
       coordGetter = getCoordinates interpolater model.cache
-      p = fromMaybe 0 $ getPrime model.norm
+      colorGetter v = fromMaybe "#000" $ M.lookup v model.colorCache
   in
    HH.div_ [ SVG.svg [ SVG.width model.size
                      , SVG.height model.size
@@ -179,7 +187,7 @@ render model =
                                                        , dblSizeStr
                                                        ]
                      ]
-             (renderBubble coordGetter alpha p model <$> model.bubbles) ]
+             (renderBubble coordGetter colorGetter alpha <$> model.bubbles) ]
 
 data Query a = ChangeMax Int (Unit -> a)
              | ChangeTick Int (Unit -> a)
@@ -257,7 +265,11 @@ reinitCache next =  do
           A.foldl (\acc x -> M.insert x (getCircleCoord model x) acc) emptyCache ints
         PadicVector ->
           A.foldl (\acc x -> M.insert x (getPadicCoord model x) acc) emptyCache ints
-  H.modify_ (_ { cache = cache })
+
+      colorCache = A.foldl (\acc x -> M.insert x (mkColor model x) acc) M.empty ints
+  H.modify_ (_ { cache = cache
+               , colorCache = colorCache
+               })
   H.modify_ increaseMaxId
   pure next
 

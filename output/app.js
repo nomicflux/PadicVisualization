@@ -10684,7 +10684,7 @@ var PS = {};
           if (model.coordType instanceof Circular) {
               return PadicVector.value;
           };
-          throw new Error("Failed pattern match at Component.Canvas line 272, column 17 - line 274, column 32: " + [ model.coordType.constructor.name ]);
+          throw new Error("Failed pattern match at Component.Canvas line 284, column 17 - line 286, column 32: " + [ model.coordType.constructor.name ]);
       })();
       return {
           maxInt: model.maxInt,
@@ -10695,6 +10695,7 @@ var PS = {};
           numIncs: model.numIncs,
           coordType: newRepr,
           cache: model.cache,
+          colorCache: model.colorCache,
           maxTick: model.maxTick,
           animate: model.animate,
           scale: model.scale,
@@ -10712,6 +10713,7 @@ var PS = {};
           numIncs: model.numIncs,
           coordType: model.coordType,
           cache: model.cache,
+          colorCache: model.colorCache,
           maxTick: model.maxTick,
           animate: !model.animate,
           scale: model.scale,
@@ -10734,26 +10736,22 @@ var PS = {};
           };
       };
   };
+  var renderBubble = function (coordGetter) {
+      return function (colorGetter) {
+          return function (alpha) {
+              return function (bubble) {
+                  var coords = coordGetter(bubble);
+                  var b = Component_Bubble.getValue(bubble);
+                  var color = colorGetter(b);
+                  var key = Data_Show.show(Data_Show.showInt)(b);
+                  return Data_Tuple.Tuple.create(key)(HalogenHelpers_SVG_Keyed.circle([ HalogenHelpers_SVG_Keyed.cx(HalogenHelpers_SVG_Internal.numericNum)(Data_Show.showNumber)(coords.x), HalogenHelpers_SVG_Keyed.cy(HalogenHelpers_SVG_Internal.numericNum)(Data_Show.showNumber)(coords.y), HalogenHelpers_SVG_Keyed.r(1), HalogenHelpers_SVG_Keyed.stroke(color), HalogenHelpers_SVG_Keyed.fill(color), HalogenHelpers_SVG_Keyed.opacity(HalogenHelpers_SVG_Internal.numericNum)(Data_Show.showNumber)(alpha) ]));
+              };
+          };
+      };
+  };
   var numInPlace = function (model) {
       return function (x) {
           return Data_EuclideanRing.mod(Data_EuclideanRing.euclideanRingInt)(x - model.numIncs | 0)(model.maxInt + 1 | 0);
-      };
-  };
-  var renderBubble = function (coordGetter) {
-      return function (alpha) {
-          return function (p) {
-              return function (model) {
-                  return function (bubble) {
-                      var step = 360.0 / Data_Int.toNumber(Data_EuclideanRing.div(Data_EuclideanRing.euclideanRingInt)(model.maxInt)(p));
-                      var coords = coordGetter(bubble);
-                      var b = Component_Bubble.getValue(bubble);
-                      var hue = step * Data_Int.toNumber(numInPlace(model)(b));
-                      var color = Color.toHexString(Color.hsv(hue)(1.0)(1.0));
-                      var key = Data_Show.show(Data_Show.showInt)(b);
-                      return Data_Tuple.Tuple.create(key)(HalogenHelpers_SVG_Keyed.circle([ HalogenHelpers_SVG_Keyed.cx(HalogenHelpers_SVG_Internal.numericNum)(Data_Show.showNumber)(coords.x), HalogenHelpers_SVG_Keyed.cy(HalogenHelpers_SVG_Internal.numericNum)(Data_Show.showNumber)(coords.y), HalogenHelpers_SVG_Keyed.r(1), HalogenHelpers_SVG_Keyed.stroke(color), HalogenHelpers_SVG_Keyed.fill(color), HalogenHelpers_SVG_Keyed.opacity(HalogenHelpers_SVG_Internal.numericNum)(Data_Show.showNumber)(alpha) ]));
-                  };
-              };
-          };
       };
   };
   var normalizeCoords = function (model) {
@@ -10763,6 +10761,14 @@ var PS = {};
               left: model.zoom * Data_Int.toNumber(model.scale)
           };
           return HalogenHelpers_Coordinates.addOffset(HalogenHelpers_Coordinates.scale(Data_Int.toNumber(model.scale))(coords))(offset);
+      };
+  };
+  var mkColor = function (model) {
+      return function (value) {
+          var p = Data_Maybe.fromMaybe(0)(Norm.getPrime(model.norm));
+          var step = 360.0 / Data_Int.toNumber(Data_EuclideanRing.div(Data_EuclideanRing.euclideanRingInt)(model.maxInt)(p));
+          var hue = step * Data_Int.toNumber(numInPlace(model)(value));
+          return Color.toHexString(Color.hsv(hue)(1.0)(1.0));
       };
   };
   var mkBubbles = function (maxInt) {
@@ -10785,6 +10791,7 @@ var PS = {};
           numIncs: 0,
           coordType: input.coordType,
           cache: Data_Map_Internal.empty,
+          colorCache: Data_Map_Internal.empty,
           maxTick: input.maxTick,
           animate: true,
           scale: input.scale,
@@ -10802,6 +10809,7 @@ var PS = {};
           numIncs: model.numIncs,
           coordType: model.coordType,
           cache: model.cache,
+          colorCache: model.colorCache,
           maxTick: model.maxTick,
           animate: model.animate,
           scale: model.scale,
@@ -10841,6 +10849,7 @@ var PS = {};
           numIncs: model.numIncs + 1 | 0,
           coordType: model.coordType,
           cache: model.cache,
+          colorCache: model.colorCache,
           maxTick: model.maxTick,
           animate: model.animate,
           scale: model.scale,
@@ -10889,18 +10898,20 @@ var PS = {};
                       y: interpolater($$new.y)(mold.value0.y)
                   };
               };
-              throw new Error("Failed pattern match at Component.Canvas line 123, column 6 - line 128, column 8: " + [ mold.constructor.name ]);
+              throw new Error("Failed pattern match at Component.Canvas line 125, column 6 - line 130, column 8: " + [ mold.constructor.name ]);
           };
       };
   };
   var render = function (model) {
       var propTick = Control_Monad_Reader.runReader(Component_Animation.proportionalTick(Control_Monad_Reader_Trans.monadReaderReaderT(Data_Identity.monadIdentity))(model.time))(model.maxTick);
-      var p = Data_Maybe.fromMaybe(0)(Norm.getPrime(model.norm));
       var interpolater = Control_Monad_Reader.runReader(Component_Animation.sqrtInterpolate(Control_Monad_Reader_Trans.monadReaderReaderT(Data_Identity.monadIdentity))(model.time))(model.maxTick);
       var dblSizeStr = Data_Show.show(Data_Show.showNumber)(2.0 * model.zoom * Data_Int.toNumber(model.scale));
       var coordGetter = getCoordinates(interpolater)(model.cache);
+      var colorGetter = function (v) {
+          return Data_Maybe.fromMaybe("#000")(Data_Map_Internal.lookup(Data_Ord.ordInt)(v)(model.colorCache));
+      };
       var alpha = 0.2 + 0.7 * square($$Math.cos($$Math.pi * propTick));
-      return Halogen_HTML_Elements.div_([ HalogenHelpers_SVG_Keyed.svg([ HalogenHelpers_SVG_Keyed.width(HalogenHelpers_SVG_Internal.numericInt)(Data_Show.showInt)(model.size), HalogenHelpers_SVG_Keyed.height(HalogenHelpers_SVG_Internal.numericInt)(Data_Show.showInt)(model.size), HalogenHelpers_SVG_Keyed.viewBox(Data_Foldable.intercalate(Data_Foldable.foldableArray)(Data_Monoid.monoidString)(" ")([ "0", "0", dblSizeStr, dblSizeStr ])) ])(Data_Functor.map(Data_Functor.functorArray)(renderBubble(coordGetter)(alpha)(p)(model))(model.bubbles)) ]);
+      return Halogen_HTML_Elements.div_([ HalogenHelpers_SVG_Keyed.svg([ HalogenHelpers_SVG_Keyed.width(HalogenHelpers_SVG_Internal.numericInt)(Data_Show.showInt)(model.size), HalogenHelpers_SVG_Keyed.height(HalogenHelpers_SVG_Internal.numericInt)(Data_Show.showInt)(model.size), HalogenHelpers_SVG_Keyed.viewBox(Data_Foldable.intercalate(Data_Foldable.foldableArray)(Data_Monoid.monoidString)(" ")([ "0", "0", dblSizeStr, dblSizeStr ])) ])(Data_Functor.map(Data_Functor.functorArray)(renderBubble(coordGetter)(colorGetter)(alpha))(model.bubbles)) ]);
   };
   var getCircleCoord = function (model) {
       return function (n) {
@@ -10911,6 +10922,11 @@ var PS = {};
   var reinitCache = function (next) {
       return Control_Bind.bind(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.get(Halogen_Query_HalogenM.monadStateHalogenM))(function (v) {
           var ints = Data_Array.range(0)(v.maxInt);
+          var colorCache = Data_Foldable.foldl(Data_Foldable.foldableArray)(function (acc) {
+              return function (x) {
+                  return Data_Map_Internal.insert(Data_Ord.ordInt)(x)(mkColor(v)(x))(acc);
+              };
+          })(Data_Map_Internal.empty)(ints);
           var cache = (function () {
               if (v.coordType instanceof Circular) {
                   return Data_Foldable.foldl(Data_Foldable.foldableArray)(function (acc) {
@@ -10926,7 +10942,7 @@ var PS = {};
                       };
                   })(Data_Map_Internal.empty)(ints);
               };
-              throw new Error("Failed pattern match at Component.Canvas line 255, column 15 - line 259, column 85: " + [ v.coordType.constructor.name ]);
+              throw new Error("Failed pattern match at Component.Canvas line 263, column 15 - line 267, column 85: " + [ v.coordType.constructor.name ]);
           })();
           return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
               var $37 = {};
@@ -10936,6 +10952,7 @@ var PS = {};
                   };
               };
               $37.cache = cache;
+              $37.colorCache = colorCache;
               return $37;
           }))(function () {
               return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(increaseMaxId))(function () {
@@ -10988,6 +11005,7 @@ var PS = {};
           numIncs: model.numIncs - 1 | 0,
           coordType: model.coordType,
           cache: model.cache,
+          colorCache: model.colorCache,
           maxTick: model.maxTick,
           animate: model.animate,
           scale: model.scale,
@@ -11006,6 +11024,7 @@ var PS = {};
               numIncs: model.numIncs,
               coordType: model.coordType,
               cache: model.cache,
+              colorCache: model.colorCache,
               maxTick: model.maxTick,
               animate: model.animate,
               scale: model.scale,
@@ -11123,15 +11142,15 @@ var PS = {};
                           return $$eval(new IncValues(v.value0(Data_Unit.unit)));
                       });
                   };
-                  throw new Error("Failed pattern match at Component.Canvas line 307, column 7 - line 313, column 40: " + [ newTick.constructor.name ]);
+                  throw new Error("Failed pattern match at Component.Canvas line 319, column 7 - line 325, column 40: " + [ newTick.constructor.name ]);
               };
-              throw new Error("Failed pattern match at Component.Canvas line 303, column 3 - line 313, column 40: " + [ v1.animate.constructor.name ]);
+              throw new Error("Failed pattern match at Component.Canvas line 315, column 3 - line 325, column 40: " + [ v1.animate.constructor.name ]);
           });
       };
       if (v instanceof InitCaches) {
           return reinitCache(v.value0);
       };
-      throw new Error("Failed pattern match at Component.Canvas line 282, column 1 - line 282, column 64: " + [ v.constructor.name ]);
+      throw new Error("Failed pattern match at Component.Canvas line 294, column 1 - line 294, column 64: " + [ v.constructor.name ]);
   };
   var component = Halogen_Component.lifecycleComponent(Halogen_HTML_Core.bifunctorHTML)({
       initialState: initialModel,
@@ -11157,6 +11176,7 @@ var PS = {};
   exports["component"] = component;
   exports["numInPlace"] = numInPlace;
   exports["square"] = square;
+  exports["mkColor"] = mkColor;
   exports["renderBubble"] = renderBubble;
   exports["render"] = render;
   exports["ChangeMax"] = ChangeMax;
