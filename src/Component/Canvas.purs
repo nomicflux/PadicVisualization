@@ -125,16 +125,15 @@ getPadicCoord model n =
   in normalizeCoords model $ PV.toVector model.maxInt p (B.getValue b)
 
 getCoordinates :: (Number -> Number -> Number) ->
-                  Map Int Coordinates -> Bubble -> Coordinates
-getCoordinates interpolater cache bubble =
+                  Map Int Coordinates -> Number ->
+                  Bubble -> Coordinates
+getCoordinates interpolater cache size bubble =
   let mold = B.getOldValue bubble >>= flip M.lookup cache
+      old = fromMaybe (C.addOffset baseCoordinates {top: size / 2.0, left: size}) mold
       new = fromMaybe baseCoordinates $ M.lookup (B.getValue bubble) cache
-  in case mold of
-    Nothing -> new
-    Just old ->
-      { x: interpolater new.x old.x
-      , y: interpolater new.y old.y
-      }
+  in { x: interpolater new.x old.x
+     , y: interpolater new.y old.y
+     }
 
 component :: H.Component HH.HTML Query Input Message Aff
 component = H.lifecycleComponent { initialState: initialModel
@@ -186,9 +185,12 @@ drawBubble ctx coordGetter colorGetter radius bubble =
 canvasId :: String
 canvasId = "bubble-canvas"
 
+getSize :: Model -> Int
+getSize model = round $ 4.0 * toNumber model.scale
+
 render :: Model -> H.ComponentHTML Query
 render model =
-  let size = round $ 4.0 * toNumber model.scale
+  let size = getSize model
   in
    HH.canvas [ HP.width size
              , HP.height size
@@ -288,7 +290,7 @@ redraw model =
   let propTick = Reader.runReader (An.proportionalTick model.time) model.maxTick
       alpha = 0.2 + 0.7 * (square $ Math.cos $ Math.pi * propTick)
       interpolater = Reader.runReader (An.sqrtInterpolate model.time) model.maxTick
-      coordGetter = getCoordinates interpolater model.cache
+      coordGetter = getCoordinates interpolater model.cache (toNumber $ getSize model)
       colorGetter v = fromMaybe "#000" $ M.lookup (numInPlace model v) model.colorCache
   in do
     mcanvas <- Ca.getCanvasElementById canvasId
