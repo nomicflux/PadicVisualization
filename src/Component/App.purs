@@ -90,7 +90,7 @@ render _ = HH.div [ HP.class_ $ HH.ClassName "pure-g" ]
       , mkButton "Toggle Animation" "warning" (Just "Turn animation on and off") ToggleAnimation
       , mkNumInput "_-adic Norm" (show $ fromMaybe 0 (getPrime baseInput.norm)) (Just "<= 1 yields normal absolute value; 2 and above use p-adic norm") SetNorm
       , mkNumInput "# of Frames" (show baseInput.maxTick) (Just "Frames between each position; controls speed of animation") SetTick
-      , mkNumInput "Max Int" (show baseInput.maxInt) (Just "Displays all numbers from 0 up to and incl. the max int; for best results, use a power of the number used for the p-adic norm minus one") SetMax
+      , mkNumInput "Max Int" (show baseInput.maxInt) (Just "Displays all numbers from 0 up to and incl. the max int; for best results, use a power of the number used for the p-adic norm minus one, especially if changing Add To and Mult By") SetMax
       , mkNumInput "Scale" (show baseInput.scale) (Just "Controls distance between dots") SetScale
       , mkNumInput "Radius" (show baseInput.radius) (Just "Controls size of dots") SetRadius
       , mkNumInput "Add To" (show baseInput.addTo) Nothing SetAdd
