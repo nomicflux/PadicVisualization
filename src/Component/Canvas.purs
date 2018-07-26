@@ -53,6 +53,7 @@ type Model = { maxInt :: Int
              , maxTick :: Int
              , animate :: Boolean
              , scale :: Int
+             , radius :: Int
              }
 
 type Input = { size :: Int
@@ -61,6 +62,7 @@ type Input = { size :: Int
              , coordType :: CoordType
              , maxTick :: Int
              , scale :: Int
+             , radius :: Int
              }
 
 mkBubbles :: Int -> Array Bubble
@@ -79,6 +81,7 @@ initialModel input = { maxInt: input.maxInt
                      , maxTick: input.maxTick
                      , animate: true
                      , scale: input.scale
+                     , radius: input.radius
                      }
 
 maxValue :: Model -> Int
@@ -145,7 +148,7 @@ square n = n * n
 mkColor :: Model -> Int -> String
 mkColor model value =
   let p = fromMaybe 1 $ getPrime model.norm
-      step = 360.0 / toNumber (model.maxInt / p)
+      step = 360.0 / toNumber ((model.maxInt + 1))
       hue = step * toNumber value
   in Co.toHexString (Co.hsv hue 1.0 1.0)
 
@@ -162,13 +165,14 @@ drawCircle ctx coords r color = do
 drawBubble :: Ca.Context2D ->
               (Bubble -> Coordinates) ->
               (Int -> String) ->
+              Int ->
               Bubble ->
               Effect Unit
-drawBubble ctx coordGetter colorGetter bubble =
+drawBubble ctx coordGetter colorGetter radius bubble =
   let coords = coordGetter bubble
       b = B.getValue bubble
       color = colorGetter b
-  in drawCircle ctx coords 1.0 color
+  in drawCircle ctx coords (toNumber radius) color
 
 canvasId :: String
 canvasId = "bubble-canvas"
@@ -186,6 +190,7 @@ data Query a = ChangeMax Int (Unit -> a)
              | ChangeTick Int (Unit -> a)
              | ChangeNorm Norm (Unit -> a)
              | ChangeScale Int (Unit -> a)
+             | ChangeRadius Int (Unit -> a)
              | ToggleRepr (Unit -> a)
              | ToggleAnimation (Unit -> a)
              | IncValues a
@@ -297,7 +302,7 @@ redraw model =
         dim <- Ca.getCanvasDimensions canvas
         Ca.clearRect ctx {x: 0.0, y: 0.0, width: dim.width, height: dim.height}
         Ca.setGlobalAlpha ctx alpha
-        for_ model.bubbles (drawBubble ctx coordGetter colorGetter)
+        for_ model.bubbles (drawBubble ctx coordGetter colorGetter model.radius)
         pure unit
 
 eval :: Query ~> H.ComponentDSL Model Query Message Aff
@@ -307,6 +312,8 @@ eval (ChangeTick tick reply) =
   H.modify_ (_ { maxTick = tick } ) *> pure (reply unit)
 eval (ChangeScale scale reply) =
   H.modify_ (_ { scale = scale } ) *> reinitCache (reply unit)
+eval (ChangeRadius radius reply) =
+  H.modify_ (_ { radius = radius } ) *> reinitCache (reply unit)
 eval (ToggleRepr reply) = H.modify_ toggleRepr *> reinitCache (reply unit)
 eval (ToggleAnimation reply) = H.modify_ toggleAnimation *> reinitCache (reply unit)
 eval (IncValues next) = do
