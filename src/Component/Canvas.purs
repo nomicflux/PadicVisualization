@@ -240,7 +240,7 @@ incAll model =
     newBubbles = ST.run (newBubblesST model.bubbles)
   in
    model { bubbles = newBubbles
-         , numIncs = model.numIncs + 1
+         , numIncs = (inc.multBy * model.numIncs + inc.addTo) `mod` (model.maxInt + 1)
          }
 
 reinitCache :: forall a. a -> H.ComponentDSL Model Query Message Aff a
