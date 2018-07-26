@@ -5,7 +5,7 @@ import Prelude
 import Component.Canvas as CC
 import Data.Array ((:))
 import Data.Filterable (filter)
-import Data.Int (fromString, toNumber, round)
+import Data.Int (fromString)
 import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Effect.Aff (Aff)
 import Halogen as H
@@ -56,17 +56,17 @@ render :: Unit -> H.ParentHTML Query CC.Query CC.Slot Aff
 render _ = HH.div [ HP.class_ $ HH.ClassName "pure-g" ]
            [ renderSidebar, renderMain ]
   where
-    mkButton :: String -> String ->
-                Boolean ->
+    mkButton :: String -> String -> Maybe String ->
                 (Unit -> Query Unit) ->
                 H.ParentHTML Query CC.Query CC.Slot Aff
-    mkButton text class_ disabled query =
-      HH.button [ HP.class_ $ HH.ClassName ("pure-button button-" <> class_)
-                , HE.onClick $ HE.input_ query
-                , HP.disabled disabled
-                , HP.type_ $ HP.ButtonButton
-                ]
-      [ HH.text text ]
+    mkButton text class_ description query =
+      let buttonDiv = HH.button [ HP.class_ $ HH.ClassName ("pure-button button-" <> class_)
+                                , HE.onClick $ HE.input_ query
+                                , HP.type_ $ HP.ButtonButton
+                                ]
+                      [ HH.text text ]
+          descrDiv = maybe [] (\txt -> [ HH.div [ HP.class_ $ HH.ClassName "description"] [ HH.text txt ]]) description
+      in HH.div [ HP.class_ $ HH.ClassName "button-div" ] (buttonDiv : descrDiv)
 
     mkNumInput :: String -> String -> Maybe String ->
                   (Int -> Unit -> Query Unit) ->
@@ -89,8 +89,8 @@ render _ = HH.div [ HP.class_ $ HH.ClassName "pure-g" ]
     renderSidebar :: H.ParentHTML Query CC.Query CC.Slot Aff
     renderSidebar =
       HH.div [ HP.class_ $ HH.ClassName "pure-u-1-4 sidebar" ]
-      [ mkButton "Toggle Representation" "primary" false ToggleRepr
-      , mkButton "Toggle Animation" "warning" false ToggleAnimation
+      [ mkButton "Toggle Representation" "primary" (Just "Between fractal given by the p-adic representation, or circles given by the p-adic norm") ToggleRepr
+      , mkButton "Toggle Animation" "warning" (Just "Turn animation on and off") ToggleAnimation
       , mkNumInput "_-adic Norm" (show $ fromMaybe 0 (getPrime initNorm)) (Just "<= 1 yields normal absolute value; 2 and above use p-adic norm") SetNorm
       , mkNumInput "# of Frames" (show initTick) (Just "Frames between each position; controls speed of animation") SetTick
       , mkNumInput "Max Int" (show initMaxInt) (Just "Displays all numbers from 0 up to and incl. the max int; for best results, use a power of the number used for the p-adic norm") SetMax
