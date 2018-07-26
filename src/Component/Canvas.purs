@@ -148,7 +148,10 @@ square n = n * n
 mkColor :: Model -> Int -> String
 mkColor model value =
   let p = fromMaybe 1 $ getPrime model.norm
-      step = 360.0 / toNumber ((model.maxInt + 1))
+      divisor = case model.norm of
+        Circular -> p
+        PadicVector -> 1
+      step = 360.0 / toNumber ((model.maxInt + 1) / divisor)
       hue = step * toNumber value
   in Co.toHexString (Co.hsv hue 1.0 1.0)
 
