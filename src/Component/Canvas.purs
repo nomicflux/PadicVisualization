@@ -148,7 +148,7 @@ square n = n * n
 mkColor :: Model -> Int -> String
 mkColor model value =
   let p = fromMaybe 1 $ getPrime model.norm
-      divisor = case model.norm of
+      divisor = case model.coordType of
         Circular -> p
         PadicVector -> 1
       step = 360.0 / toNumber ((model.maxInt + 1) / divisor)
