@@ -246,6 +246,7 @@ incAll model =
 reinitCache :: forall a. a -> H.ComponentDSL Model Query Message Aff a
 reinitCache next =  do
   model <- H.get
+  H.modify_ regenBubbles
   let ints = A.range 0 model.maxInt
       emptyCache :: Map Int Coordinates
       emptyCache = M.empty
@@ -273,11 +274,14 @@ toggleRepr model =
         Circular -> PadicVector
   in model { coordType = newRepr }
 
+regenBubbles :: Model -> Model
+regenBubbles model = model { bubbles = mkBubbles model.maxInt
+                           , numIncs = 0
+                           }
+
+
 changeMax :: Int -> Model -> Model
-changeMax maxInt model = model { maxInt = maxInt
-                               , bubbles = mkBubbles maxInt
-                               , numIncs = 0
-                               }
+changeMax maxInt model = model { maxInt = maxInt }
 
 redraw :: Model -> Effect Unit
 redraw model =
