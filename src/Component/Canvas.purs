@@ -54,6 +54,8 @@ type Model = { maxInt :: Int
              , animate :: Boolean
              , scale :: Int
              , radius :: Int
+             , addTo :: Int
+             , multBy :: Int
              }
 
 type Input = { size :: Int
@@ -63,6 +65,8 @@ type Input = { size :: Int
              , maxTick :: Int
              , scale :: Int
              , radius :: Int
+             , addTo :: Int
+             , multBy :: Int
              }
 
 mkBubbles :: Int -> Array Bubble
@@ -82,6 +86,8 @@ initialModel input = { maxInt: input.maxInt
                      , animate: true
                      , scale: input.scale
                      , radius: input.radius
+                     , addTo: input.addTo
+                     , multBy: input.multBy
                      }
 
 maxValue :: Model -> Int
@@ -194,63 +200,47 @@ data Query a = ChangeMax Int (Unit -> a)
              | ChangeNorm Norm (Unit -> a)
              | ChangeScale Int (Unit -> a)
              | ChangeRadius Int (Unit -> a)
+             | ChangeAddTo Int (Unit -> a)
+             | ChangeMultBy Int (Unit -> a)
              | ToggleRepr (Unit -> a)
              | ToggleAnimation (Unit -> a)
              | IncValues a
-             | DecValues a
              | InitCaches a
              | MoveTick (Unit -> a)
 
 data Message = Noop
 
-replaceBubble :: Int -> Bubble -> Bubble -> Bubble
-replaceBubble maxInt def bubble =
+replaceBubble :: Int -> Bubble -> Bubble
+replaceBubble maxInt bubble =
   let v = B.getValue bubble
   in if v <= maxInt && v >= 0
      then bubble
-     else def
+     else B.mkBubble (v `mod` (maxInt + 1))
 
-incBubble :: forall h. Int -> Bubble -> STArray h Bubble -> Int -> ST h Unit
-incBubble maxInt def bubbles idx = do
-  _ <- AST.modify idx (replaceBubble maxInt def <<< B.incValue) bubbles
+type Inc = { addTo :: Int
+           , multBy :: Int
+           }
+
+incBubble :: forall h. Int -> Inc -> STArray h Bubble -> Int -> ST h Unit
+incBubble maxInt inc bubbles idx = do
+  _ <- AST.modify idx (replaceBubble maxInt <<< B.incValueBy inc.addTo <<< B.multValueBy inc.multBy) bubbles
   pure unit
 
 incAll :: Model -> Model
 incAll model =
   let
-    def = B.mkBubble 0
+    changer :: forall h. STArray h Bubble -> Int -> ST h Unit
+    changer = incBubble model.maxInt {addTo: model.addTo, multBy: model.multBy}
 
     newBubblesST :: forall h. Array Bubble -> ST h (Array Bubble)
     newBubblesST bubbles = do
       bubblesST <- AST.thaw bubbles
-      _ <- ST.for 0 (A.length bubbles) (incBubble model.maxInt def bubblesST)
+      _ <- ST.for 0 (A.length bubbles) (changer bubblesST)
       AST.freeze bubblesST
     newBubbles = ST.run (newBubblesST model.bubbles)
   in
    model { bubbles = newBubbles
          , numIncs = model.numIncs + 1
-         }
-
-decBubble :: forall h. Int -> Bubble -> STArray h Bubble -> Int -> ST h Unit
-decBubble maxInt def bubbles idx = do
-  _ <- AST.modify idx B.decValue bubbles
-  _ <- AST.modify idx (replaceBubble maxInt def) bubbles
-  pure unit
-
-decAll :: Model -> Model
-decAll model =
-  let
-    def = B.mkBubble model.maxInt
-
-    newBubblesST :: forall h. Array Bubble -> ST h (Array Bubble)
-    newBubblesST bubbles = do
-      bubblesST <- AST.thaw bubbles
-      _ <- ST.for 0 (A.length bubbles) (decBubble model.maxInt def bubblesST)
-      AST.freeze bubblesST
-    newBubbles = ST.run (newBubblesST model.bubbles)
-  in
-   model { bubbles = newBubbles
-         , numIncs = model.numIncs - 1
          }
 
 reinitCache :: forall a. a -> H.ComponentDSL Model Query Message Aff a
@@ -313,6 +303,10 @@ eval (ChangeMax max reply) = H.modify_ (changeMax max) *> reinitCache (reply uni
 eval (ChangeNorm norm reply) = H.modify_ (_ { norm = norm }) *> reinitCache (reply unit)
 eval (ChangeTick tick reply) =
   H.modify_ (_ { maxTick = tick } ) *> pure (reply unit)
+eval (ChangeAddTo addTo reply) =
+  H.modify_ (_ { addTo = addTo } ) *> reinitCache (reply unit)
+eval (ChangeMultBy multBy reply) =
+  H.modify_ (_ { multBy = multBy } ) *> reinitCache (reply unit)
 eval (ChangeScale scale reply) =
   H.modify_ (_ { scale = scale } ) *> reinitCache (reply unit)
 eval (ChangeRadius radius reply) =
@@ -322,10 +316,6 @@ eval (ToggleAnimation reply) = H.modify_ toggleAnimation *> reinitCache (reply u
 eval (IncValues next) = do
   model <- H.get
   H.modify_ incAll
-  pure next
-eval (DecValues next) = do
-  model <- H.get
-  H.modify_ decAll
   pure next
 eval (MoveTick reply) = do
   model <- H.get

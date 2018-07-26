@@ -38,5 +38,11 @@ modifyBubble f b@(Bubble bubble) =
 incValue :: Bubble -> Bubble
 incValue = modifyBubble (\b -> setValue (getValue b + 1) b)
 
+incValueBy :: Int -> Bubble -> Bubble
+incValueBy by = modifyBubble (\b -> setValue (getValue b + by) b)
+
+multValueBy :: Int -> Bubble -> Bubble
+multValueBy by = modifyBubble (\b -> setValue (getValue b * by) b)
+
 decValue :: Bubble -> Bubble
 decValue = modifyBubble (\b -> setValue (getValue b - 1) b)

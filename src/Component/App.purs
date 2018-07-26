@@ -15,26 +15,16 @@ import Halogen.HTML.Properties as HP
 import HalogenHelpers.Communication (passAlong)
 import Norm (Norm(..), getPrime)
 
-initMaxInt :: Int
-initMaxInt = 728
-initNorm :: Norm
-initNorm = Padic 3
-initTick :: Int
-initTick = 64
-initScale :: Int
-initScale = 200
-initRadius :: Int
-initRadius = 1
-
-
 baseInput :: CC.Input
 baseInput = { size: 1024
-            , maxInt: initMaxInt
-            , norm: initNorm
+            , maxInt: 728
+            , norm: Padic 3
             , coordType: CC.PadicVector
-            , maxTick: initTick
-            , scale: initScale
-            , radius: initRadius
+            , maxTick: 64
+            , scale: 200
+            , radius: 1
+            , addTo: 1
+            , multBy: 1
             }
 
 data Query a = SetNorm Int a
@@ -42,6 +32,8 @@ data Query a = SetNorm Int a
              | SetTick Int a
              | SetScale Int a
              | SetRadius Int a
+             | SetAdd Int a
+             | SetMult Int a
              | ToggleRepr a
              | ToggleAnimation a
              | Tick a
@@ -96,11 +88,13 @@ render _ = HH.div [ HP.class_ $ HH.ClassName "pure-g" ]
       HH.div [ HP.class_ $ HH.ClassName "pure-u-1-4 sidebar" ]
       [ mkButton "Toggle Representation" "primary" (Just "Between fractal given by the p-adic representation, or circles given by the p-adic norm") ToggleRepr
       , mkButton "Toggle Animation" "warning" (Just "Turn animation on and off") ToggleAnimation
-      , mkNumInput "_-adic Norm" (show $ fromMaybe 0 (getPrime initNorm)) (Just "<= 1 yields normal absolute value; 2 and above use p-adic norm") SetNorm
-      , mkNumInput "# of Frames" (show initTick) (Just "Frames between each position; controls speed of animation") SetTick
-      , mkNumInput "Max Int" (show initMaxInt) (Just "Displays all numbers from 0 up to and incl. the max int; for best results, use a power of the number used for the p-adic norm minus one") SetMax
-      , mkNumInput "Scale" (show initScale) (Just "Controls distance between dots") SetScale
-      , mkNumInput "Radius" (show initRadius) (Just "Controls size of dots") SetRadius
+      , mkNumInput "_-adic Norm" (show $ fromMaybe 0 (getPrime baseInput.norm)) (Just "<= 1 yields normal absolute value; 2 and above use p-adic norm") SetNorm
+      , mkNumInput "# of Frames" (show baseInput.maxTick) (Just "Frames between each position; controls speed of animation") SetTick
+      , mkNumInput "Max Int" (show baseInput.maxInt) (Just "Displays all numbers from 0 up to and incl. the max int; for best results, use a power of the number used for the p-adic norm minus one") SetMax
+      , mkNumInput "Scale" (show baseInput.scale) (Just "Controls distance between dots") SetScale
+      , mkNumInput "Radius" (show baseInput.radius) (Just "Controls size of dots") SetRadius
+      , mkNumInput "Add To" (show baseInput.addTo) Nothing SetAdd
+      , mkNumInput "Mult By" (show baseInput.multBy) (Just "For \"Add To\" b and \"Mult By\" a, this will change a number n to a*n + b") SetMult
       ]
 
     renderMain :: H.ParentHTML Query CC.Query CC.Slot Aff
@@ -116,6 +110,8 @@ eval (SetMax max next) = passAlong (CC.ChangeMax max) *> pure next
 eval (SetTick max next) = passAlong (CC.ChangeTick max) *> pure next
 eval (SetScale scale next) = passAlong (CC.ChangeScale scale) *> pure next
 eval (SetRadius radius next) = passAlong (CC.ChangeRadius radius) *> pure next
+eval (SetAdd x next) = passAlong (CC.ChangeAddTo x) *> pure next
+eval (SetMult y next) = passAlong (CC.ChangeMultBy y) *> pure next
 eval (ToggleRepr next) = passAlong CC.ToggleRepr *> pure next
 eval (ToggleAnimation next) = passAlong CC.ToggleAnimation *> pure next
 eval (Tick next) = passAlong CC.MoveTick *> pure next
