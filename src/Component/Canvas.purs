@@ -13,18 +13,21 @@ import Control.Monad.ST as ST
 import Data.Array as A
 import Data.Array.ST (STArray)
 import Data.Array.ST as AST
-import Data.Int (toNumber)
+import Data.Int (round, toNumber)
 import Data.Map (Map)
 import Data.Map as M
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Rational (Rational, fromInt)
 import Data.Rational as R
-import Data.Tuple (Tuple(..))
+import Data.Traversable (for_)
+import Effect (Effect)
+import Effect.Aff (Aff)
+import Graphics.Canvas as Ca
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import HalogenHelpers.Coordinates (Coordinates)
 import HalogenHelpers.Coordinates as C
-import HalogenHelpers.SVG.Keyed as SVG
 import Math as Math
 import Norm (Norm, getPrime, isPadic)
 import PadicVector (baseCoordinates)
@@ -50,7 +53,6 @@ type Model = { maxInt :: Int
              , maxTick :: Int
              , animate :: Boolean
              , scale :: Int
-             , zoom :: Number
              , currMaxId :: Int
              }
 
@@ -60,7 +62,6 @@ type Input = { size :: Int
              , coordType :: CoordType
              , maxTick :: Int
              , scale :: Int
-             , zoom :: Number
              }
 
 mkBubbles :: Int -> Array Bubble
@@ -79,7 +80,6 @@ initialModel input = { maxInt: input.maxInt
                      , maxTick: input.maxTick
                      , animate: true
                      , scale: input.scale
-                     , zoom: input.zoom
                      , currMaxId: -input.maxInt
                      }
 
@@ -101,8 +101,8 @@ toPolar model bubble =
 
 normalizeCoords :: Model -> Coordinates -> Coordinates
 normalizeCoords model coords =
-  let offset = { top: model.zoom * toNumber model.scale
-               , left: model.zoom * toNumber model.scale
+  let offset = { top: 1.5 * toNumber model.scale
+               , left: 1.5 * toNumber model.scale
                }
   in C.addOffset (C.scale (toNumber model.scale) coords) offset
 
@@ -129,7 +129,7 @@ getCoordinates interpolater cache bubble =
       , y: interpolater new.y old.y
       }
 
-component :: forall m. H.Component HH.HTML Query Input Message m
+component :: H.Component HH.HTML Query Input Message Aff
 component = H.lifecycleComponent { initialState: initialModel
                                  , render
                                  , eval
@@ -151,49 +151,43 @@ mkColor model value =
       hue = step * toNumber (numInPlace model value)
   in Co.toHexString (Co.hsv hue 1.0 1.0)
 
-renderBubble :: (Bubble -> Coordinates) ->
-                (Int -> String) ->
-                Number ->
-                Bubble ->
-                Tuple String (H.ComponentHTML Query)
-renderBubble coordGetter colorGetter alpha bubble =
+drawCircle :: Ca.Context2D -> Coordinates -> Number -> String -> Effect Unit
+drawCircle ctx coords r color = do
+  Ca.beginPath ctx
+  Ca.arc ctx { x: coords.x, y: coords.y, radius: r, start: 0.0, end: 2.0 * Math.pi }
+  Ca.setFillStyle ctx color
+  Ca.fill ctx
+  Ca.setStrokeStyle ctx color
+  Ca.stroke ctx
+  Ca.closePath ctx
+
+drawBubble :: Ca.Context2D ->
+              (Bubble -> Coordinates) ->
+              (Int -> String) ->
+              Bubble ->
+              Effect Unit
+drawBubble ctx coordGetter colorGetter bubble =
   let coords = coordGetter bubble
       b = B.getValue bubble
       color = colorGetter b
-      key = show b
-  in
-   Tuple key $ SVG.circle [ SVG.cx coords.x
-                          , SVG.cy coords.y
-                          , SVG.r 1
-                          , SVG.stroke color
-                          , SVG.fill color
-                          , SVG.opacity alpha
-                          ]
+  in drawCircle ctx coords 1.0 color
+
+canvasId :: String
+canvasId = "bubble-canvas"
 
 render :: Model -> H.ComponentHTML Query
 render model =
-  let dblSizeStr = show $ 2.0 * model.zoom * toNumber model.scale
-      propTick = Reader.runReader (An.proportionalTick model.time) model.maxTick
-      alpha = 0.2 + 0.7 * (square $ Math.cos $ Math.pi * propTick)
-      interpolater = Reader.runReader (An.sqrtInterpolate model.time) model.maxTick
-      coordGetter = getCoordinates interpolater model.cache
-      colorGetter v = fromMaybe "#000" $ M.lookup v model.colorCache
+  let size = round $ 4.0 * toNumber model.scale
   in
-   HH.div_ [ SVG.svg [ SVG.width model.size
-                     , SVG.height model.size
-                     , SVG.viewBox $ A.intercalate " " [ "0"
-                                                       , "0"
-                                                       , dblSizeStr
-                                                       , dblSizeStr
-                                                       ]
-                     ]
-             (renderBubble coordGetter colorGetter alpha <$> model.bubbles) ]
+   HH.canvas [ HP.width size
+             , HP.height size
+             , HP.id_ canvasId
+             ]
 
 data Query a = ChangeMax Int (Unit -> a)
              | ChangeTick Int (Unit -> a)
              | ChangeNorm Norm (Unit -> a)
              | ChangeScale Int (Unit -> a)
-             | ChangeZoom Number (Unit -> a)
              | ToggleRepr (Unit -> a)
              | ToggleAnimation (Unit -> a)
              | IncValues a
@@ -253,7 +247,7 @@ decAll model =
          , numIncs = model.numIncs - 1
          }
 
-reinitCache :: forall a m. a -> H.ComponentDSL Model Query Message m a
+reinitCache :: forall a. a -> H.ComponentDSL Model Query Message Aff a
 reinitCache next =  do
   model <- H.get
   let ints = A.range 0 model.maxInt
@@ -271,6 +265,7 @@ reinitCache next =  do
                , colorCache = colorCache
                })
   H.modify_ increaseMaxId
+  H.liftEffect $ redraw model
   pure next
 
 increaseMaxId :: Model -> Model
@@ -291,15 +286,32 @@ changeMax maxInt model = model { maxInt = maxInt
                                , bubbles = mkBubbles maxInt
                                }
 
-eval :: forall m. Query ~> H.ComponentDSL Model Query Message m
+redraw :: Model -> Effect Unit
+redraw model =
+  let propTick = Reader.runReader (An.proportionalTick model.time) model.maxTick
+      alpha = 0.2 + 0.7 * (square $ Math.cos $ Math.pi * propTick)
+      interpolater = Reader.runReader (An.sqrtInterpolate model.time) model.maxTick
+      coordGetter = getCoordinates interpolater model.cache
+      colorGetter v = fromMaybe "#000" $ M.lookup v model.colorCache
+  in do
+    mcanvas <- Ca.getCanvasElementById canvasId
+    case mcanvas of
+      Nothing -> pure unit
+      Just canvas -> do
+        ctx <- Ca.getContext2D canvas
+        dim <- Ca.getCanvasDimensions canvas
+        Ca.clearRect ctx {x: 0.0, y: 0.0, width: dim.width, height: dim.height}
+        Ca.setGlobalAlpha ctx alpha
+        for_ model.bubbles (drawBubble ctx coordGetter colorGetter)
+        pure unit
+
+eval :: Query ~> H.ComponentDSL Model Query Message Aff
 eval (ChangeMax max reply) = H.modify_ (changeMax max) *> reinitCache (reply unit)
 eval (ChangeNorm norm reply) = H.modify_ (_ { norm = norm }) *> reinitCache (reply unit)
 eval (ChangeTick tick reply) =
   H.modify_ (_ { maxTick = tick } ) *> pure (reply unit)
 eval (ChangeScale scale reply) =
   H.modify_ (_ { scale = scale } ) *> reinitCache (reply unit)
-eval (ChangeZoom zoom reply) =
-  H.modify_ (_ { zoom = zoom } ) *> reinitCache (reply unit)
 eval (ToggleRepr reply) = H.modify_ toggleRepr *> reinitCache (reply unit)
 eval (ToggleAnimation reply) = H.modify_ toggleAnimation *> reinitCache (reply unit)
 eval (IncValues next) = do
@@ -313,15 +325,19 @@ eval (DecValues next) = do
 eval (MoveTick reply) = do
   model <- H.get
   case model.animate of
-    false -> pure (reply unit)
+    false -> do
+      H.liftEffect $ redraw model
+      pure (reply unit)
     true -> do
       let newTick = model.time >>= \t -> Reader.runReader (incTick t) model.maxTick
       case newTick of
         Just _ -> do
           H.modify_ (_ { time = newTick })
+          H.liftEffect $ redraw model
           pure (reply unit)
         Nothing -> do
           H.modify_ (_ { time = Just startTick })
+          H.liftEffect $ redraw model
           eval (IncValues (reply unit))
 eval (InitCaches next) =
   reinitCache next
