@@ -91,9 +91,9 @@ render _ = HH.div [ HP.class_ $ HH.ClassName "pure-g" ]
       HH.div [ HP.class_ $ HH.ClassName "pure-u-1-4 sidebar" ]
       [ mkButton "Toggle Representation" "primary" false ToggleRepr
       , mkButton "Toggle Animation" "warning" false ToggleAnimation
-      , mkNumInput "Norm" (show $ fromMaybe 0 (getPrime initNorm)) (Just "<= 1 yields normal absolute value; 2 and above use p-adic norm") SetNorm
+      , mkNumInput "_-adic Norm" (show $ fromMaybe 0 (getPrime initNorm)) (Just "<= 1 yields normal absolute value; 2 and above use p-adic norm") SetNorm
       , mkNumInput "# of Frames" (show initTick) (Just "Frames between each position; controls speed of animation") SetTick
-      , mkNumInput "Max Int" (show initMaxInt) (Just "Displays all numbers from 0 up to and incl. the max int") SetMax
+      , mkNumInput "Max Int" (show initMaxInt) (Just "Displays all numbers from 0 up to and incl. the max int; for best results, use a power of the number used for the p-adic norm") SetMax
       , mkNumInput "Scale" (show initScale) (Just "Controls size of dots") SetScale
       ]
 

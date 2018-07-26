@@ -53,7 +53,6 @@ type Model = { maxInt :: Int
              , maxTick :: Int
              , animate :: Boolean
              , scale :: Int
-             , currMaxId :: Int
              }
 
 type Input = { size :: Int
@@ -80,7 +79,6 @@ initialModel input = { maxInt: input.maxInt
                      , maxTick: input.maxTick
                      , animate: true
                      , scale: input.scale
-                     , currMaxId: -input.maxInt
                      }
 
 maxValue :: Model -> Int
@@ -146,9 +144,9 @@ square n = n * n
 
 mkColor :: Model -> Int -> String
 mkColor model value =
-  let p = fromMaybe 0 $ getPrime model.norm
+  let p = fromMaybe 1 $ getPrime model.norm
       step = 360.0 / toNumber (model.maxInt / p)
-      hue = step * toNumber (numInPlace model value)
+      hue = step * toNumber value
   in Co.toHexString (Co.hsv hue 1.0 1.0)
 
 drawCircle :: Ca.Context2D -> Coordinates -> Number -> String -> Effect Unit
@@ -264,12 +262,8 @@ reinitCache next =  do
   H.modify_ (_ { cache = cache
                , colorCache = colorCache
                })
-  H.modify_ increaseMaxId
   H.liftEffect $ redraw model
   pure next
-
-increaseMaxId :: Model -> Model
-increaseMaxId model = model { currMaxId = model.currMaxId + model.maxInt + 1 }
 
 toggleAnimation :: Model -> Model
 toggleAnimation model = model { animate = not model.animate }
@@ -284,6 +278,7 @@ toggleRepr model =
 changeMax :: Int -> Model -> Model
 changeMax maxInt model = model { maxInt = maxInt
                                , bubbles = mkBubbles maxInt
+                               , numIncs = 0
                                }
 
 redraw :: Model -> Effect Unit
@@ -292,7 +287,7 @@ redraw model =
       alpha = 0.2 + 0.7 * (square $ Math.cos $ Math.pi * propTick)
       interpolater = Reader.runReader (An.sqrtInterpolate model.time) model.maxTick
       coordGetter = getCoordinates interpolater model.cache
-      colorGetter v = fromMaybe "#000" $ M.lookup v model.colorCache
+      colorGetter v = fromMaybe "#000" $ M.lookup (numInPlace model v) model.colorCache
   in do
     mcanvas <- Ca.getCanvasElementById canvasId
     case mcanvas of

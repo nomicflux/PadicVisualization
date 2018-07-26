@@ -10701,7 +10701,7 @@ var PS = {};
           if (model.coordType instanceof Circular) {
               return PadicVector.value;
           };
-          throw new Error("Failed pattern match at Component.Canvas line 279, column 17 - line 281, column 32: " + [ model.coordType.constructor.name ]);
+          throw new Error("Failed pattern match at Component.Canvas line 273, column 17 - line 275, column 32: " + [ model.coordType.constructor.name ]);
       })();
       return {
           maxInt: model.maxInt,
@@ -10715,8 +10715,7 @@ var PS = {};
           colorCache: model.colorCache,
           maxTick: model.maxTick,
           animate: model.animate,
-          scale: model.scale,
-          currMaxId: model.currMaxId
+          scale: model.scale
       };
   };
   var toggleAnimation = function (model) {
@@ -10732,8 +10731,7 @@ var PS = {};
           colorCache: model.colorCache,
           maxTick: model.maxTick,
           animate: !model.animate,
-          scale: model.scale,
-          currMaxId: model.currMaxId
+          scale: model.scale
       };
   };
   var square = function (n) {
@@ -10743,8 +10741,8 @@ var PS = {};
       return function (def) {
           return function (bubble) {
               var v = Component_Bubble.getValue(bubble);
-              var $32 = v <= maxInt && v >= 0;
-              if ($32) {
+              var $31 = v <= maxInt && v >= 0;
+              if ($31) {
                   return bubble;
               };
               return def;
@@ -10767,9 +10765,9 @@ var PS = {};
   };
   var mkColor = function (model) {
       return function (value) {
-          var p = Data_Maybe.fromMaybe(0)(Norm.getPrime(model.norm));
+          var p = Data_Maybe.fromMaybe(1)(Norm.getPrime(model.norm));
           var step = 360.0 / Data_Int.toNumber(Data_EuclideanRing.div(Data_EuclideanRing.euclideanRingInt)(model.maxInt)(p));
-          var hue = step * Data_Int.toNumber(numInPlace(model)(value));
+          var hue = step * Data_Int.toNumber(value);
           return Color.toHexString(Color.hsv(hue)(1.0)(1.0));
       };
   };
@@ -10777,8 +10775,8 @@ var PS = {};
       return Data_Functor.map(Data_Functor.functorArray)(Component_Bubble.mkBubble)(Data_Array.range(0)(maxInt));
   };
   var maxValue = function (model) {
-      var $33 = Norm.isPadic(model.norm);
-      if ($33) {
+      var $32 = Norm.isPadic(model.norm);
+      if ($32) {
           return 1;
       };
       return model.maxInt;
@@ -10796,33 +10794,15 @@ var PS = {};
           colorCache: Data_Map_Internal.empty,
           maxTick: input.maxTick,
           animate: true,
-          scale: input.scale,
-          currMaxId: -input.maxInt | 0
-      };
-  };
-  var increaseMaxId = function (model) {
-      return {
-          maxInt: model.maxInt,
-          norm: model.norm,
-          bubbles: model.bubbles,
-          time: model.time,
-          size: model.size,
-          numIncs: model.numIncs,
-          coordType: model.coordType,
-          cache: model.cache,
-          colorCache: model.colorCache,
-          maxTick: model.maxTick,
-          animate: model.animate,
-          scale: model.scale,
-          currMaxId: (model.currMaxId + model.maxInt | 0) + 1 | 0
+          scale: input.scale
       };
   };
   var incBubble = function (maxInt) {
       return function (def) {
           return function (bubbles) {
               return function (idx) {
-                  return Control_Bind.bind(Control_Monad_ST_Internal.bindST)(Data_Array_ST.modify(idx)(function ($88) {
-                      return replaceBubble(maxInt)(def)(Component_Bubble.incValue($88));
+                  return Control_Bind.bind(Control_Monad_ST_Internal.bindST)(Data_Array_ST.modify(idx)(function ($87) {
+                      return replaceBubble(maxInt)(def)(Component_Bubble.incValue($87));
                   })(bubbles))(function (v) {
                       return Control_Applicative.pure(Control_Monad_ST_Internal.applicativeST)(Data_Unit.unit);
                   });
@@ -10852,8 +10832,7 @@ var PS = {};
           colorCache: model.colorCache,
           maxTick: model.maxTick,
           animate: model.animate,
-          scale: model.scale,
-          currMaxId: model.currMaxId
+          scale: model.scale
       };
   };
   var getTheta = function (model) {
@@ -10897,7 +10876,7 @@ var PS = {};
                       y: interpolater($$new.y)(mold.value0.y)
                   };
               };
-              throw new Error("Failed pattern match at Component.Canvas line 125, column 6 - line 130, column 8: " + [ mold.constructor.name ]);
+              throw new Error("Failed pattern match at Component.Canvas line 123, column 6 - line 128, column 8: " + [ mold.constructor.name ]);
           };
       };
   };
@@ -10989,8 +10968,7 @@ var PS = {};
           colorCache: model.colorCache,
           maxTick: model.maxTick,
           animate: model.animate,
-          scale: model.scale,
-          currMaxId: model.currMaxId
+          scale: model.scale
       };
   };
   var changeMax = function (maxInt) {
@@ -11001,14 +10979,13 @@ var PS = {};
               bubbles: mkBubbles(maxInt),
               time: model.time,
               size: model.size,
-              numIncs: model.numIncs,
+              numIncs: 0,
               coordType: model.coordType,
               cache: model.cache,
               colorCache: model.colorCache,
               maxTick: model.maxTick,
               animate: model.animate,
-              scale: model.scale,
-              currMaxId: model.currMaxId
+              scale: model.scale
           };
       };
   };
@@ -11018,7 +10995,7 @@ var PS = {};
       var interpolater = Control_Monad_Reader.runReader(Component_Animation.sqrtInterpolate(Control_Monad_Reader_Trans.monadReaderReaderT(Data_Identity.monadIdentity))(model.time))(model.maxTick);
       var coordGetter = getCoordinates(interpolater)(model.cache);
       var colorGetter = function (v) {
-          return Data_Maybe.fromMaybe("#000")(Data_Map_Internal.lookup(Data_Ord.ordInt)(v)(model.colorCache));
+          return Data_Maybe.fromMaybe("#000")(Data_Map_Internal.lookup(Data_Ord.ordInt)(numInPlace(model)(v))(model.colorCache));
       };
       var alpha = 0.2 + 0.7 * square($$Math.cos($$Math.pi * propTick));
       return function __do() {
@@ -11039,7 +11016,7 @@ var PS = {};
               Data_Foldable.for_(Effect.applicativeEffect)(Data_Foldable.foldableArray)(model.bubbles)(drawBubble(v1)(coordGetter)(colorGetter))();
               return Data_Unit.unit;
           };
-          throw new Error("Failed pattern match at Component.Canvas line 298, column 5 - line 306, column 18: " + [ v.constructor.name ]);
+          throw new Error("Failed pattern match at Component.Canvas line 293, column 5 - line 301, column 18: " + [ v.constructor.name ]);
       };
   };
   var reinitCache = function (next) {
@@ -11065,23 +11042,21 @@ var PS = {};
                       };
                   })(Data_Map_Internal.empty)(ints);
               };
-              throw new Error("Failed pattern match at Component.Canvas line 257, column 15 - line 261, column 85: " + [ v.coordType.constructor.name ]);
+              throw new Error("Failed pattern match at Component.Canvas line 255, column 15 - line 259, column 85: " + [ v.coordType.constructor.name ]);
           })();
           return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
-              var $49 = {};
-              for (var $50 in v1) {
-                  if ({}.hasOwnProperty.call(v1, $50)) {
-                      $49[$50] = v1[$50];
+              var $48 = {};
+              for (var $49 in v1) {
+                  if ({}.hasOwnProperty.call(v1, $49)) {
+                      $48[$49] = v1[$49];
                   };
               };
-              $49.cache = cache;
-              $49.colorCache = colorCache;
-              return $49;
+              $48.cache = cache;
+              $48.colorCache = colorCache;
+              return $48;
           }))(function () {
-              return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(increaseMaxId))(function () {
-                  return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Effect_Class.liftEffect(Halogen_Query_HalogenM.monadEffectHalogenM(Effect_Aff.monadEffectAff))(redraw(v)))(function () {
-                      return Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(next);
-                  });
+              return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Effect_Class.liftEffect(Halogen_Query_HalogenM.monadEffectHalogenM(Effect_Aff.monadEffectAff))(redraw(v)))(function () {
+                  return Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(next);
               });
           });
       });
@@ -11092,38 +11067,38 @@ var PS = {};
       };
       if (v instanceof ChangeNorm) {
           return Control_Apply.applySecond(Halogen_Query_HalogenM.applyHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
-              var $55 = {};
-              for (var $56 in v1) {
-                  if ({}.hasOwnProperty.call(v1, $56)) {
-                      $55[$56] = v1[$56];
+              var $54 = {};
+              for (var $55 in v1) {
+                  if ({}.hasOwnProperty.call(v1, $55)) {
+                      $54[$55] = v1[$55];
                   };
               };
-              $55.norm = v.value0;
-              return $55;
+              $54.norm = v.value0;
+              return $54;
           }))(reinitCache(v.value1(Data_Unit.unit)));
       };
       if (v instanceof ChangeTick) {
           return Control_Apply.applySecond(Halogen_Query_HalogenM.applyHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
-              var $60 = {};
-              for (var $61 in v1) {
-                  if ({}.hasOwnProperty.call(v1, $61)) {
-                      $60[$61] = v1[$61];
+              var $59 = {};
+              for (var $60 in v1) {
+                  if ({}.hasOwnProperty.call(v1, $60)) {
+                      $59[$60] = v1[$60];
                   };
               };
-              $60.maxTick = v.value0;
-              return $60;
+              $59.maxTick = v.value0;
+              return $59;
           }))(Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(v.value1(Data_Unit.unit)));
       };
       if (v instanceof ChangeScale) {
           return Control_Apply.applySecond(Halogen_Query_HalogenM.applyHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
-              var $65 = {};
-              for (var $66 in v1) {
-                  if ({}.hasOwnProperty.call(v1, $66)) {
-                      $65[$66] = v1[$66];
+              var $64 = {};
+              for (var $65 in v1) {
+                  if ({}.hasOwnProperty.call(v1, $65)) {
+                      $64[$65] = v1[$65];
                   };
               };
-              $65.scale = v.value0;
-              return $65;
+              $64.scale = v.value0;
+              return $64;
           }))(reinitCache(v.value1(Data_Unit.unit)));
       };
       if (v instanceof ToggleRepr) {
@@ -11159,14 +11134,14 @@ var PS = {};
                   });
                   if (newTick instanceof Data_Maybe.Just) {
                       return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v2) {
-                          var $79 = {};
-                          for (var $80 in v2) {
-                              if ({}.hasOwnProperty.call(v2, $80)) {
-                                  $79[$80] = v2[$80];
+                          var $78 = {};
+                          for (var $79 in v2) {
+                              if ({}.hasOwnProperty.call(v2, $79)) {
+                                  $78[$79] = v2[$79];
                               };
                           };
-                          $79.time = newTick;
-                          return $79;
+                          $78.time = newTick;
+                          return $78;
                       }))(function () {
                           return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Effect_Class.liftEffect(Halogen_Query_HalogenM.monadEffectHalogenM(Effect_Aff.monadEffectAff))(redraw(v1)))(function () {
                               return Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(v.value0(Data_Unit.unit));
@@ -11175,29 +11150,29 @@ var PS = {};
                   };
                   if (newTick instanceof Data_Maybe.Nothing) {
                       return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v2) {
-                          var $83 = {};
-                          for (var $84 in v2) {
-                              if ({}.hasOwnProperty.call(v2, $84)) {
-                                  $83[$84] = v2[$84];
+                          var $82 = {};
+                          for (var $83 in v2) {
+                              if ({}.hasOwnProperty.call(v2, $83)) {
+                                  $82[$83] = v2[$83];
                               };
                           };
-                          $83.time = new Data_Maybe.Just(Component_Animation.startTick);
-                          return $83;
+                          $82.time = new Data_Maybe.Just(Component_Animation.startTick);
+                          return $82;
                       }))(function () {
                           return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Effect_Class.liftEffect(Halogen_Query_HalogenM.monadEffectHalogenM(Effect_Aff.monadEffectAff))(redraw(v1)))(function () {
                               return $$eval(new IncValues(v.value0(Data_Unit.unit)));
                           });
                       });
                   };
-                  throw new Error("Failed pattern match at Component.Canvas line 333, column 7 - line 341, column 40: " + [ newTick.constructor.name ]);
+                  throw new Error("Failed pattern match at Component.Canvas line 328, column 7 - line 336, column 40: " + [ newTick.constructor.name ]);
               };
-              throw new Error("Failed pattern match at Component.Canvas line 327, column 3 - line 341, column 40: " + [ v1.animate.constructor.name ]);
+              throw new Error("Failed pattern match at Component.Canvas line 322, column 3 - line 336, column 40: " + [ v1.animate.constructor.name ]);
           });
       };
       if (v instanceof InitCaches) {
           return reinitCache(v.value0);
       };
-      throw new Error("Failed pattern match at Component.Canvas line 308, column 1 - line 308, column 56: " + [ v.constructor.name ]);
+      throw new Error("Failed pattern match at Component.Canvas line 303, column 1 - line 303, column 56: " + [ v.constructor.name ]);
   };
   var render = function (model) {
       var size = Data_Int.round(4.0 * Data_Int.toNumber(model.scale));
@@ -11248,7 +11223,6 @@ var PS = {};
   exports["decBubble"] = decBubble;
   exports["decAll"] = decAll;
   exports["reinitCache"] = reinitCache;
-  exports["increaseMaxId"] = increaseMaxId;
   exports["toggleAnimation"] = toggleAnimation;
   exports["toggleRepr"] = toggleRepr;
   exports["changeMax"] = changeMax;
@@ -11602,7 +11576,8 @@ var PS = {};
   exports["passAlong"] = passAlong;
 })(PS["HalogenHelpers.Communication"] = PS["HalogenHelpers.Communication"] || {});
 (function(exports) {
-    "use strict";
+  // Generated by purs version 0.12.0
+  "use strict";
   var Component_Canvas = PS["Component.Canvas"];
   var Control_Applicative = PS["Control.Applicative"];
   var Control_Apply = PS["Control.Apply"];
@@ -11793,7 +11768,7 @@ var PS = {};
               };
           };
       };
-      var renderSidebar = Halogen_HTML_Elements.div([ Halogen_HTML_Properties.class_("pure-u-1-4 sidebar") ])([ mkButton("Toggle Representation")("primary")(false)(ToggleRepr.create), mkButton("Toggle Animation")("warning")(false)(ToggleAnimation.create), mkNumInput("Norm")(Data_Show.show(Data_Show.showInt)(Data_Maybe.fromMaybe(0)(Norm.getPrime(initNorm))))(new Data_Maybe.Just("<= 1 yields normal absolute value; 2 and above use p-adic norm"))(SetNorm.create), mkNumInput("# of Frames")(Data_Show.show(Data_Show.showInt)(initTick))(new Data_Maybe.Just("Frames between each position; controls speed of animation"))(SetTick.create), mkNumInput("Max Int")(Data_Show.show(Data_Show.showInt)(initMaxInt))(new Data_Maybe.Just("Displays all numbers from 0 up to and incl. the max int"))(SetMax.create), mkNumInput("Scale")(Data_Show.show(Data_Show.showInt)(initScale))(new Data_Maybe.Just("Controls size of dots"))(SetScale.create) ]);
+      var renderSidebar = Halogen_HTML_Elements.div([ Halogen_HTML_Properties.class_("pure-u-1-4 sidebar") ])([ mkButton("Toggle Representation")("primary")(false)(ToggleRepr.create), mkButton("Toggle Animation")("warning")(false)(ToggleAnimation.create), mkNumInput("_-adic Norm")(Data_Show.show(Data_Show.showInt)(Data_Maybe.fromMaybe(0)(Norm.getPrime(initNorm))))(new Data_Maybe.Just("<= 1 yields normal absolute value; 2 and above use p-adic norm"))(SetNorm.create), mkNumInput("# of Frames")(Data_Show.show(Data_Show.showInt)(initTick))(new Data_Maybe.Just("Frames between each position; controls speed of animation"))(SetTick.create), mkNumInput("Max Int")(Data_Show.show(Data_Show.showInt)(initMaxInt))(new Data_Maybe.Just("Displays all numbers from 0 up to and incl. the max int; for best results, use a power of the number used for the p-adic norm"))(SetMax.create), mkNumInput("Scale")(Data_Show.show(Data_Show.showInt)(initScale))(new Data_Maybe.Just("Controls size of dots"))(SetScale.create) ]);
       return Halogen_HTML_Elements.div([ Halogen_HTML_Properties.class_("pure-g") ])([ renderSidebar, renderMain ]);
   };
   var component = Halogen_Component.parentComponent(Component_Canvas.ordSlot)({
