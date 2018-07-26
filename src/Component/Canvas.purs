@@ -13,7 +13,7 @@ import Control.Monad.ST as ST
 import Data.Array as A
 import Data.Array.ST (STArray)
 import Data.Array.ST as AST
-import Data.Int (round, toNumber)
+import Data.Int (round, toNumber, pow)
 import Data.Map (Map)
 import Data.Map as M
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -29,7 +29,7 @@ import Halogen.HTML.Properties as HP
 import HalogenHelpers.Coordinates (Coordinates)
 import HalogenHelpers.Coordinates as C
 import Math as Math
-import Norm (Norm, getPrime, isPadic)
+import Norm (Norm(..), getPrime, isPadic)
 import PadicVector (baseCoordinates)
 import PadicVector as PV
 import PolarCoordinates (PolarCoordinates)
@@ -93,6 +93,19 @@ initialModel input = { maxInt: input.maxInt
 maxValue :: Model -> Int
 maxValue model =
   if isPadic model.norm then 1 else model.maxInt
+
+getPower :: Int -> Int -> Int
+getPower p n = go n 0
+  where
+    go n' m
+      | n' < p = m + 1
+      | otherwise = go (n' / p) (m + 1)
+
+getFullMax :: Model -> Int
+getFullMax model =
+  case model.norm of
+    Inf -> model.maxInt
+    Padic p -> pow p (getPower p model.maxInt)
 
 getR :: Model -> Rational -> Rational
 getR model value = value / fromInt (maxValue model)
@@ -231,8 +244,10 @@ incBubble maxInt inc bubbles idx = do
 incAll :: Model -> Model
 incAll model =
   let
+    maxInt = getFullMax model
+
     changer :: forall h. STArray h Bubble -> Int -> ST h Unit
-    changer = incBubble model.maxInt {addTo: model.addTo, multBy: model.multBy}
+    changer = incBubble maxInt {addTo: model.addTo, multBy: model.multBy}
 
     newBubblesST :: forall h. Array Bubble -> ST h (Array Bubble)
     newBubblesST bubbles = do
@@ -249,7 +264,7 @@ reinitCache :: forall a. a -> H.ComponentDSL Model Query Message Aff a
 reinitCache next =  do
   model <- H.get
   H.modify_ regenBubbles
-  let ints = A.range 0 model.maxInt
+  let ints = A.range 0 (getFullMax model - 1)
       emptyCache :: Map Int Coordinates
       emptyCache = M.empty
 
