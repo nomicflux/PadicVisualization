@@ -25,6 +25,7 @@ baseInput = { size: 1024
             , radius: 1
             , addTo: 1
             , multBy: 1
+            , cycle: true
             }
 
 data Query a = SetNorm Int a

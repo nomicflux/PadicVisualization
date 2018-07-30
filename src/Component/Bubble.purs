@@ -15,6 +15,9 @@ mkBubble value = Bubble { oldValue: Nothing
                         , value
                         }
 
+bubbleWPast :: Bubble -> Maybe Int -> Bubble
+bubbleWPast (Bubble bubble) mold = Bubble $ bubble { oldValue = mold }
+
 getValue :: Bubble -> Int
 getValue (Bubble b) = b.value
 

@@ -56,6 +56,7 @@ type Model = { maxInt :: Int
              , radius :: Int
              , addTo :: Int
              , multBy :: Int
+             , cycle :: Boolean
              }
 
 type Input = { size :: Int
@@ -67,6 +68,7 @@ type Input = { size :: Int
              , radius :: Int
              , addTo :: Int
              , multBy :: Int
+             , cycle :: Boolean
              }
 
 mkBubbles :: Int -> Array Bubble
@@ -88,6 +90,7 @@ initialModel input = { maxInt: input.maxInt
                      , radius: input.radius
                      , addTo: input.addTo
                      , multBy: input.multBy
+                     , cycle: input.cycle
                      }
 
 maxValue :: Model -> Int
@@ -103,9 +106,11 @@ getPower p n = go n 0
 
 getFullMax :: Model -> Int
 getFullMax model =
-  case model.norm of
-    Inf -> model.maxInt
-    Padic p -> pow p (getPower p model.maxInt)
+  if model.cycle then model.maxInt
+  else
+    case model.norm of
+      Inf -> model.maxInt
+      Padic p -> pow p (getPower p model.maxInt)
 
 getR :: Model -> Rational -> Rational
 getR model value = value / fromInt (maxValue model)
@@ -133,9 +138,8 @@ getCircleCoord model n =
 
 getPadicCoord :: Model -> Int -> Coordinates
 getPadicCoord model n =
-  let b = B.mkBubble n
-      p = fromMaybe 0 (getPrime model.norm)
-  in normalizeCoords model $ PV.toVector model.maxInt p (B.getValue b)
+  let p = fromMaybe 0 (getPrime model.norm)
+  in normalizeCoords model $ PV.toVector model.maxInt p n
 
 getCoordinates :: (Number -> Number -> Number) ->
                   Map Int Coordinates -> Number ->
@@ -225,20 +229,22 @@ data Query a = ChangeMax Int (Unit -> a)
 
 data Message = Noop
 
-replaceBubble :: Int -> Bubble -> Bubble
-replaceBubble maxInt bubble =
+replaceBubble :: Boolean -> Int -> Bubble -> Bubble
+replaceBubble cycle maxInt bubble =
   let v = B.getValue bubble
+      mold = B.getOldValue bubble
   in if v <= maxInt && v >= 0
      then bubble
-     else B.mkBubble (v `mod` (maxInt + 1))
+     else let new = B.mkBubble (v `mod` (maxInt + 1))
+          in if cycle then B.bubbleWPast new (Just 0) else new
 
 type Inc = { addTo :: Int
            , multBy :: Int
            }
 
-incBubble :: forall h. Int -> Inc -> STArray h Bubble -> Int -> ST h Unit
-incBubble maxInt inc bubbles idx = do
-  _ <- AST.modify idx (replaceBubble maxInt <<< B.incValueBy inc.addTo <<< B.multValueBy inc.multBy) bubbles
+incBubble :: forall h. Boolean -> Int -> Inc -> STArray h Bubble -> Int -> ST h Unit
+incBubble cycle maxInt inc bubbles idx = do
+  _ <- AST.modify idx (replaceBubble cycle maxInt <<< B.incValueBy inc.addTo <<< B.multValueBy inc.multBy) bubbles
   pure unit
 
 incAll :: Model -> Model
@@ -247,7 +253,7 @@ incAll model =
     maxInt = getFullMax model
 
     changer :: forall h. STArray h Bubble -> Int -> ST h Unit
-    changer = incBubble maxInt {addTo: model.addTo, multBy: model.multBy}
+    changer = incBubble model.cycle maxInt {addTo: model.addTo, multBy: model.multBy}
 
     newBubblesST :: forall h. Array Bubble -> ST h (Array Bubble)
     newBubblesST bubbles = do
@@ -264,7 +270,7 @@ reinitCache :: forall a. a -> H.ComponentDSL Model Query Message Aff a
 reinitCache next =  do
   model <- H.get
   H.modify_ regenBubbles
-  let ints = A.range 0 (getFullMax model - 1)
+  let ints = A.range 0 (getFullMax model)
       emptyCache :: Map Int Coordinates
       emptyCache = M.empty
 
@@ -295,7 +301,6 @@ regenBubbles :: Model -> Model
 regenBubbles model = model { bubbles = mkBubbles model.maxInt
                            , numIncs = 0
                            }
-
 
 changeMax :: Int -> Model -> Model
 changeMax maxInt model = model { maxInt = maxInt }
