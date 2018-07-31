@@ -251,7 +251,7 @@ type Inc = { addTo :: Int
 
 incBubble :: forall h. Boolean -> Int -> Inc -> STArray h Bubble -> Int -> ST h Unit
 incBubble cycle maxInt inc bubbles idx = do
-  _ <- AST.modify idx (replaceBubble cycle maxInt <<< B.cubeBy inc.cubeBy inc.sqrBy inc.multBy inc.addTo) bubbles
+  _ <- AST.modify idx (replaceBubble cycle maxInt <<< B.linearBy inc.multBy inc.addTo) bubbles
   pure unit
 
 incAll :: Model -> Model
