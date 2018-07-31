@@ -319,7 +319,7 @@ changeMax maxInt model = model { maxInt = maxInt }
 redraw :: Model -> Effect Unit
 redraw model =
   let propTick = Reader.runReader (An.proportionalTick model.time) model.maxTick
-      alpha = 0.2 + 0.7 * (square $ Math.cos $ Math.pi * propTick)
+      alpha = 0.3 + 0.6 * (square $ Math.cos $ Math.pi * propTick)
       interpolater = Reader.runReader (An.sqrtInterpolate model.time) model.maxTick
       coordGetter = getCoordinates interpolater model.cache (toNumber $ getSize model)
       colorGetter v = fromMaybe "#000" $ M.lookup (numInPlace model v) model.colorCache
