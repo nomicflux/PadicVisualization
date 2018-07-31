@@ -10723,7 +10723,7 @@ var PS = {};
           if (model.coordType instanceof Circular) {
               return PadicVector.value;
           };
-          throw new Error("Failed pattern match at Component.Canvas line 306, column 17 - line 308, column 32: " + [ model.coordType.constructor.name ]);
+          throw new Error("Failed pattern match at Component.Canvas line 315, column 17 - line 317, column 32: " + [ model.coordType.constructor.name ]);
       })();
       return {
           maxInt: model.maxInt,
@@ -10811,7 +10811,7 @@ var PS = {};
               if (model.coordType instanceof PadicVector) {
                   return 1;
               };
-              throw new Error("Failed pattern match at Component.Canvas line 179, column 17 - line 182, column 7: " + [ model.coordType.constructor.name ]);
+              throw new Error("Failed pattern match at Component.Canvas line 189, column 17 - line 192, column 7: " + [ model.coordType.constructor.name ]);
           })();
           var step = 360.0 / Data_Int.toNumber(Data_EuclideanRing.div(Data_EuclideanRing.euclideanRingInt)(model.maxInt + 1 | 0)(divisor));
           var hue = step * Data_Int.toNumber(value);
@@ -11011,6 +11011,18 @@ var PS = {};
           };
       };
   };
+  var getColor = function (interpolater) {
+      return function (placer) {
+          return function (cache) {
+              return function (bubble) {
+                  var $$new = Component_Bubble.getValue(bubble);
+                  var old = Data_Maybe.fromMaybe($$new)(Component_Bubble.getOldValue(bubble));
+                  var interpolated = Data_Int.round(interpolater(Data_Int.toNumber($$new))(Data_Int.toNumber(old)));
+                  return Data_Maybe.fromMaybe("#000")(Data_Map_Internal.lookup(Data_Ord.ordInt)(placer(interpolated))(cache));
+              };
+          };
+      };
+  };
   var getCircleCoord = function (model) {
       return function (n) {
           var b = Component_Bubble.mkBubble(n);
@@ -11058,8 +11070,7 @@ var PS = {};
               return function (radius) {
                   return function (bubble) {
                       var coords = coordGetter(bubble);
-                      var b = Component_Bubble.getValue(bubble);
-                      var color = colorGetter(b);
+                      var color = colorGetter(bubble);
                       return drawCircle(ctx)(coords)(Data_Int.toNumber(radius))(color);
                   };
               };
@@ -11095,9 +11106,7 @@ var PS = {};
       var propTick = Control_Monad_Reader.runReader(Component_Animation.proportionalTick(Control_Monad_Reader_Trans.monadReaderReaderT(Data_Identity.monadIdentity))(model.time))(model.maxTick);
       var interpolater = Control_Monad_Reader.runReader(Component_Animation.sqrtInterpolate(Control_Monad_Reader_Trans.monadReaderReaderT(Data_Identity.monadIdentity))(model.time))(model.maxTick);
       var coordGetter = getCoordinates(interpolater)(model.cache)(Data_Int.toNumber(getSize(model)));
-      var colorGetter = function (v) {
-          return Data_Maybe.fromMaybe("#000")(Data_Map_Internal.lookup(Data_Ord.ordInt)(numInPlace(model)(v))(model.colorCache));
-      };
+      var colorGetter = getColor(interpolater)(numInPlace(model))(model.colorCache);
       var alpha = 0.3 + 0.6 * square($$Math.cos($$Math.pi * propTick));
       return function __do() {
           var v = Graphics_Canvas.getCanvasElementById(canvasId)();
@@ -11117,7 +11126,7 @@ var PS = {};
               Data_Foldable.for_(Effect.applicativeEffect)(Data_Foldable.foldableArray)(model.bubbles)(drawBubble(v1)(coordGetter)(colorGetter)(model.radius))();
               return Data_Unit.unit;
           };
-          throw new Error("Failed pattern match at Component.Canvas line 328, column 5 - line 336, column 18: " + [ v.constructor.name ]);
+          throw new Error("Failed pattern match at Component.Canvas line 338, column 5 - line 346, column 18: " + [ v.constructor.name ]);
       };
   };
   var reinitCache = function (next) {
@@ -11144,7 +11153,7 @@ var PS = {};
                           };
                       })(Data_Map_Internal.empty)(ints);
                   };
-                  throw new Error("Failed pattern match at Component.Canvas line 288, column 15 - line 292, column 85: " + [ v.coordType.constructor.name ]);
+                  throw new Error("Failed pattern match at Component.Canvas line 297, column 15 - line 301, column 85: " + [ v.coordType.constructor.name ]);
               })();
               return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
                   var $50 = {};
@@ -11296,15 +11305,15 @@ var PS = {};
                           });
                       });
                   };
-                  throw new Error("Failed pattern match at Component.Canvas line 365, column 7 - line 373, column 40: " + [ newTick.constructor.name ]);
+                  throw new Error("Failed pattern match at Component.Canvas line 375, column 7 - line 383, column 40: " + [ newTick.constructor.name ]);
               };
-              throw new Error("Failed pattern match at Component.Canvas line 359, column 3 - line 373, column 40: " + [ v1.animate.constructor.name ]);
+              throw new Error("Failed pattern match at Component.Canvas line 369, column 3 - line 383, column 40: " + [ v1.animate.constructor.name ]);
           });
       };
       if (v instanceof InitCaches) {
           return reinitCache(v.value0);
       };
-      throw new Error("Failed pattern match at Component.Canvas line 338, column 1 - line 338, column 56: " + [ v.constructor.name ]);
+      throw new Error("Failed pattern match at Component.Canvas line 348, column 1 - line 348, column 56: " + [ v.constructor.name ]);
   };
   var render = function (model) {
       var size = getSize(model);
@@ -11333,6 +11342,7 @@ var PS = {};
   exports["getCircleCoord"] = getCircleCoord;
   exports["getPadicCoord"] = getPadicCoord;
   exports["getCoordinates"] = getCoordinates;
+  exports["getColor"] = getColor;
   exports["component"] = component;
   exports["numInPlace"] = numInPlace;
   exports["square"] = square;

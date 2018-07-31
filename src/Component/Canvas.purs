@@ -158,6 +158,16 @@ getCoordinates interpolater cache size bubble =
      , y: interpolater new.y old.y
      }
 
+getColor :: (Number -> Number -> Number) ->
+            (Int -> Int) ->
+            Map Int String ->
+            Bubble -> String
+getColor interpolater placer cache bubble =
+  let new = B.getValue bubble
+      old = fromMaybe new $ B.getOldValue bubble
+      interpolated = round $ interpolater (toNumber new) (toNumber old)
+  in  fromMaybe "#000" $ M.lookup (placer interpolated) cache
+
 component :: H.Component HH.HTML Query Input Message Aff
 component = H.lifecycleComponent { initialState: initialModel
                                  , render
@@ -195,14 +205,13 @@ drawCircle ctx coords r color = do
 
 drawBubble :: Ca.Context2D ->
               (Bubble -> Coordinates) ->
-              (Int -> String) ->
+              (Bubble -> String) ->
               Int ->
               Bubble ->
               Effect Unit
 drawBubble ctx coordGetter colorGetter radius bubble =
   let coords = coordGetter bubble
-      b = B.getValue bubble
-      color = colorGetter b
+      color = colorGetter bubble
   in drawCircle ctx coords (toNumber radius) color
 
 canvasId :: String
@@ -322,7 +331,8 @@ redraw model =
       alpha = 0.3 + 0.6 * (square $ Math.cos $ Math.pi * propTick)
       interpolater = Reader.runReader (An.sqrtInterpolate model.time) model.maxTick
       coordGetter = getCoordinates interpolater model.cache (toNumber $ getSize model)
-      colorGetter v = fromMaybe "#000" $ M.lookup (numInPlace model v) model.colorCache
+      colorGetter = getColor interpolater (numInPlace model) model.colorCache
+      --colorGetter v = fromMaybe "#000" $ M.lookup (numInPlace model v) model.colorCache
   in do
     mcanvas <- Ca.getCanvasElementById canvasId
     case mcanvas of
