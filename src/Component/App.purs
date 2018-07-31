@@ -26,7 +26,7 @@ baseInput = { size: 1024
             , addTo: 1
             , multBy: 1
             , quadCoeff: 0
-            , cubeCoeff: 0
+            , cubeCoeff: 1
             , cycle: true
             }
 
@@ -39,6 +39,7 @@ data Query a = SetNorm Int a
              | SetMult Int a
              | ToggleRepr a
              | ToggleAnimation a
+             | Reset a
              | Tick a
              | HandleMessage CC.Message a
 
@@ -91,6 +92,7 @@ render _ = HH.div [ HP.class_ $ HH.ClassName "pure-g" ]
       HH.div [ HP.class_ $ HH.ClassName "pure-u-1-4 sidebar" ]
       [ mkButton "Toggle Representation" "primary" (Just "Between fractal given by the p-adic representation, or circles given by the p-adic norm") ToggleRepr
       , mkButton "Toggle Animation" "warning" (Just "Turn animation on and off") ToggleAnimation
+      , mkButton "Reset" "error" (Just "Reset animation") Reset
       , mkNumInput "_-adic Norm" (show $ fromMaybe 0 (getPrime baseInput.norm)) (Just "<= 1 yields normal absolute value; 2 and above use p-adic norm") SetNorm
       , mkNumInput "# of Frames" (show baseInput.maxTick) (Just "Frames between each position; controls speed of animation") SetTick
       , mkNumInput "Max Int" (show baseInput.maxInt) (Just "Displays all numbers from 0 up to and incl. the max int; for best results, use a power of the number used for the p-adic norm minus one, especially if changing Add To and Mult By") SetMax
@@ -117,5 +119,6 @@ eval (SetAdd x next) = passAlong (CC.ChangeAddTo x) *> pure next
 eval (SetMult y next) = passAlong (CC.ChangeMultBy y) *> pure next
 eval (ToggleRepr next) = passAlong CC.ToggleRepr *> pure next
 eval (ToggleAnimation next) = passAlong CC.ToggleAnimation *> pure next
+eval (Reset next) = passAlong CC.Reset *> pure next
 eval (Tick next) = passAlong CC.MoveTick *> pure next
 eval (HandleMessage msg next) = pure next

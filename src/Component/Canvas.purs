@@ -113,10 +113,9 @@ getPower p n = go n 0
 getFullMax :: Model -> Int
 getFullMax model =
   if model.cycle then model.maxInt
-  else
-    case model.norm of
-      Inf -> model.maxInt
-      Padic p -> pow p (getPower p model.maxInt)
+  else case model.norm of
+    Inf -> model.maxInt
+    Padic p -> pow p (getPower p model.maxInt)
 
 getR :: Model -> Rational -> Rational
 getR model value = value / fromInt (maxValue model)
@@ -240,17 +239,22 @@ data Query a = ChangeMax Int (Unit -> a)
              | ToggleAnimation (Unit -> a)
              | IncValues a
              | InitCaches a
+             | Reset (Unit -> a)
              | MoveTick (Unit -> a)
 
 data Message = Noop
 
+inRange :: Int -> Bubble -> Boolean
+inRange maxInt bubble =
+  let v = B.getValue bubble
+  in v <= maxInt && v >= 0
+
 replaceBubble :: Boolean -> Int -> Bubble -> Bubble
 replaceBubble cycle maxInt bubble =
-  let v = B.getValue bubble
-  in if v <= maxInt && v >= 0
-     then bubble
-     else let new = v `mod` (maxInt + 1)
-          in if cycle then B.setValue new bubble else B.mkBubble new
+  if inRange maxInt bubble
+  then bubble
+  else let new = B.getValue bubble `mod` (maxInt + 1)
+       in if cycle then B.setValue new bubble else B.mkBubble new
 
 type Inc = { addTo :: Int
            , multBy :: Int
@@ -268,12 +272,14 @@ incAll model =
   let
     maxInt = getFullMax model
 
+    inc = { addTo: model.addTo
+          , multBy: model.multBy
+          , sqrBy: model.quadCoeff
+          , cubeBy: model.cubeCoeff
+          }
+
     changer :: forall h. STArray h Bubble -> Int -> ST h Unit
-    changer = incBubble model.cycle maxInt { addTo: model.addTo
-                                           , multBy: model.multBy
-                                           , sqrBy: model.quadCoeff
-                                           , cubeBy: model.cubeCoeff
-                                           }
+    changer = incBubble model.cycle maxInt inc
 
     newBubblesST :: forall h. Array Bubble -> ST h (Array Bubble)
     newBubblesST bubbles = do
@@ -290,7 +296,7 @@ reinitCache :: forall a. a -> H.ComponentDSL Model Query Message Aff a
 reinitCache next =  do
   model <- H.get
   H.modify_ regenBubbles
-  let ints = A.range 0 (getFullMax model)
+  let ints = A.range 0 (getFullMax model - if model.cycle then 0 else 1)
       emptyCache :: Map Int Coordinates
       emptyCache = M.empty
 
@@ -332,7 +338,6 @@ redraw model =
       interpolater = Reader.runReader (An.sqrtInterpolate model.time) model.maxTick
       coordGetter = getCoordinates interpolater model.cache (toNumber $ getSize model)
       colorGetter = getColor interpolater (numInPlace model) model.colorCache
-      --colorGetter v = fromMaybe "#000" $ M.lookup (numInPlace model v) model.colorCache
   in do
     mcanvas <- Ca.getCanvasElementById canvasId
     case mcanvas of
@@ -344,6 +349,14 @@ redraw model =
         Ca.setGlobalAlpha ctx alpha
         for_ model.bubbles (drawBubble ctx coordGetter colorGetter model.radius)
         pure unit
+
+redrawStep :: H.ComponentDSL Model Query Message Aff Unit
+redrawStep = do
+  model <- H.get
+  H.modify_ (_ { animate = false })
+  H.liftEffect (redraw model)
+  H.modify_ (_ { animate = true })
+  pure unit
 
 eval :: Query ~> H.ComponentDSL Model Query Message Aff
 eval (ChangeMax max reply) = H.modify_ (changeMax max) *> reinitCache (reply unit)
@@ -357,7 +370,7 @@ eval (ChangeMultBy multBy reply) =
 eval (ChangeScale scale reply) =
   H.modify_ (_ { scale = scale } ) *> reinitCache (reply unit)
 eval (ChangeRadius radius reply) =
-  H.modify_ (_ { radius = radius } ) *> reinitCache (reply unit)
+  H.modify_ (_ { radius = radius } ) *> pure (reply unit)
 eval (ToggleRepr reply) = H.modify_ toggleRepr *> reinitCache (reply unit)
 eval (ToggleAnimation reply) = H.modify_ toggleAnimation *> reinitCache (reply unit)
 eval (IncValues next) = do
@@ -375,11 +388,11 @@ eval (MoveTick reply) = do
       case newTick of
         Just _ -> do
           H.modify_ (_ { time = newTick })
-          H.liftEffect $ redraw model
+          redrawStep
           pure (reply unit)
         Nothing -> do
           H.modify_ (_ { time = Just startTick })
-          H.liftEffect $ redraw model
+          redrawStep
           eval (IncValues (reply unit))
-eval (InitCaches next) =
-  reinitCache next
+eval (InitCaches next) = reinitCache next
+eval (Reset reply) = reinitCache (reply unit)
