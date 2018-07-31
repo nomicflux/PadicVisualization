@@ -15,9 +15,6 @@ mkBubble value = Bubble { oldValue: Nothing
                         , value
                         }
 
-bubbleWPast :: Bubble -> Maybe Int -> Bubble
-bubbleWPast (Bubble bubble) mold = Bubble $ bubble { oldValue = mold }
-
 getValue :: Bubble -> Int
 getValue (Bubble b) = b.value
 
@@ -26,6 +23,9 @@ getOldValue (Bubble b) = b.oldValue
 
 setValue :: Int -> Bubble -> Bubble
 setValue n (Bubble b) = Bubble (b { value = n })
+
+changeValue :: Int -> Bubble -> Bubble
+changeValue n = modifyBubble (\b -> setValue n b)
 
 getNormedValue :: Norm -> Bubble -> Rational
 getNormedValue norm bubble = takeNorm norm (getValue bubble)
@@ -46,6 +46,18 @@ incValueBy by = modifyBubble (\b -> setValue (getValue b + by) b)
 
 multValueBy :: Int -> Bubble -> Bubble
 multValueBy by = modifyBubble (\b -> setValue (getValue b * by) b)
+
+linearBy :: Int -> Int -> Bubble -> Bubble
+linearBy by plus = modifyBubble (\b -> setValue (getValue b * by + plus) b)
+
+quadBy :: Int -> Int -> Int -> Bubble -> Bubble
+quadBy sqr by plus =
+  modifyBubble (\b -> let v = getValue b in setValue (v*v*sqr + v*by + plus) b)
+
+cubeBy :: Int -> Int -> Int -> Int -> Bubble -> Bubble
+cubeBy cube sqr by plus =
+  modifyBubble (\b -> let v = getValue b
+                      in setValue (v*v*v*cube + v*v*sqr + v*by + plus) b)
 
 decValue :: Bubble -> Bubble
 decValue = modifyBubble (\b -> setValue (getValue b - 1) b)

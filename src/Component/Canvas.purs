@@ -56,6 +56,8 @@ type Model = { maxInt :: Int
              , radius :: Int
              , addTo :: Int
              , multBy :: Int
+             , quadCoeff :: Int
+             , cubeCoeff :: Int
              , cycle :: Boolean
              }
 
@@ -68,6 +70,8 @@ type Input = { size :: Int
              , radius :: Int
              , addTo :: Int
              , multBy :: Int
+             , quadCoeff :: Int
+             , cubeCoeff :: Int
              , cycle :: Boolean
              }
 
@@ -90,6 +94,8 @@ initialModel input = { maxInt: input.maxInt
                      , radius: input.radius
                      , addTo: input.addTo
                      , multBy: input.multBy
+                     , quadCoeff: input.quadCoeff
+                     , cubeCoeff: input.cubeCoeff
                      , cycle: input.cycle
                      }
 
@@ -232,19 +238,20 @@ data Message = Noop
 replaceBubble :: Boolean -> Int -> Bubble -> Bubble
 replaceBubble cycle maxInt bubble =
   let v = B.getValue bubble
-      mold = B.getOldValue bubble
   in if v <= maxInt && v >= 0
      then bubble
-     else let new = B.mkBubble (v `mod` (maxInt + 1))
-          in if cycle then B.bubbleWPast new (Just 0) else new
+     else let new = v `mod` (maxInt + 1)
+          in if cycle then B.setValue new bubble else B.mkBubble new
 
 type Inc = { addTo :: Int
            , multBy :: Int
+           , sqrBy :: Int
+           , cubeBy :: Int
            }
 
 incBubble :: forall h. Boolean -> Int -> Inc -> STArray h Bubble -> Int -> ST h Unit
 incBubble cycle maxInt inc bubbles idx = do
-  _ <- AST.modify idx (replaceBubble cycle maxInt <<< B.incValueBy inc.addTo <<< B.multValueBy inc.multBy) bubbles
+  _ <- AST.modify idx (replaceBubble cycle maxInt <<< B.cubeBy inc.cubeBy inc.sqrBy inc.multBy inc.addTo) bubbles
   pure unit
 
 incAll :: Model -> Model
@@ -253,7 +260,11 @@ incAll model =
     maxInt = getFullMax model
 
     changer :: forall h. STArray h Bubble -> Int -> ST h Unit
-    changer = incBubble model.cycle maxInt {addTo: model.addTo, multBy: model.multBy}
+    changer = incBubble model.cycle maxInt { addTo: model.addTo
+                                           , multBy: model.multBy
+                                           , sqrBy: model.quadCoeff
+                                           , cubeBy: model.cubeCoeff
+                                           }
 
     newBubblesST :: forall h. Array Bubble -> ST h (Array Bubble)
     newBubblesST bubbles = do

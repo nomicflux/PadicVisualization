@@ -25,6 +25,8 @@ baseInput = { size: 1024
             , radius: 1
             , addTo: 1
             , multBy: 1
+            , quadCoeff: 0
+            , cubeCoeff: 0
             , cycle: true
             }
 
