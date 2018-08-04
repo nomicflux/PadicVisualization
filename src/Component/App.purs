@@ -27,7 +27,7 @@ baseInput = { size: 1024
             , multBy: 1
             , quadCoeff: 0
             , cubeCoeff: 1
-            , cycle: true
+            , cycle: false
             }
 
 data Query a = SetNorm Int a
@@ -37,6 +37,7 @@ data Query a = SetNorm Int a
              | SetRadius Int a
              | SetAdd Int a
              | SetMult Int a
+             | SetCycle Boolean a
              | ToggleRepr a
              | ToggleAnimation a
              | Reset a
@@ -57,6 +58,13 @@ render :: Unit -> H.ParentHTML Query CC.Query CC.Slot Aff
 render _ = HH.div [ HP.class_ $ HH.ClassName "pure-g" ]
            [ renderSidebar, renderMain ]
   where
+    withDescription :: H.ParentHTML Query CC.Query CC.Slot Aff ->
+                       Maybe String -> String ->
+                       H.ParentHTML Query CC.Query CC.Slot Aff
+    withDescription inputDiv descr class_ =
+      let descrDiv = maybe [] (\txt -> [ HH.div [ HP.class_ $ HH.ClassName "description"] [ HH.text txt ]]) descr
+      in HH.div [ HP.class_ $ HH.ClassName class_ ] (inputDiv : descrDiv)
+
     mkButton :: String -> String -> Maybe String ->
                 (Unit -> Query Unit) ->
                 H.ParentHTML Query CC.Query CC.Slot Aff
@@ -66,8 +74,20 @@ render _ = HH.div [ HP.class_ $ HH.ClassName "pure-g" ]
                                 , HP.type_ $ HP.ButtonButton
                                 ]
                       [ HH.text text ]
-          descrDiv = maybe [] (\txt -> [ HH.div [ HP.class_ $ HH.ClassName "description"] [ HH.text txt ]]) description
-      in HH.div [ HP.class_ $ HH.ClassName "button-div" ] (buttonDiv : descrDiv)
+      in withDescription buttonDiv description "button-div"
+
+    mkCheckbox :: String -> Maybe String ->
+                  (Boolean -> Unit -> Query Unit) ->
+                  H.ParentHTML Query CC.Query CC.Slot Aff
+    mkCheckbox text descr query =
+      let inputDiv = HH.div_ [ HH.label_ [ HH.text ( text <> ": ")]
+                             , HH.input [ HP.class_ (HH.ClassName "attr-boolean")
+                                        , HP.type_ HP.InputCheckbox
+                                        , HE.onChecked $ HE.input query
+                                        , HP.title text
+                                        ]
+                             ]
+      in withDescription inputDiv descr "checkbox-div"
 
     mkNumInput :: String -> String -> Maybe String ->
                   (Int -> Unit -> Query Unit) ->
@@ -83,9 +103,7 @@ render _ = HH.div [ HP.class_ $ HH.ClassName "pure-g" ]
                                         , HP.min 0.0
                                         ]
                              ]
-          descrDiv = maybe [] (\txt -> [ HH.div [ HP.class_ $ HH.ClassName "description" ] [ HH.text txt ] ]) descr
-      in
-       HH.div [ HP.class_ $ HH.ClassName "input-div" ] (inputDiv : descrDiv)
+      in withDescription inputDiv descr "input-div"
 
     renderSidebar :: H.ParentHTML Query CC.Query CC.Slot Aff
     renderSidebar =
@@ -93,9 +111,10 @@ render _ = HH.div [ HP.class_ $ HH.ClassName "pure-g" ]
       [ mkButton "Toggle Representation" "primary" (Just "Between fractal given by the p-adic representation, or circles given by the p-adic norm") ToggleRepr
       , mkButton "Toggle Animation" "warning" (Just "Turn animation on and off") ToggleAnimation
       , mkButton "Reset" "error" (Just "Reset animation") Reset
+      , mkCheckbox "Cycle" (Just "Wrap numbers around from the next highest power of the norm after Max Int to Zero cyclically") SetCycle
       , mkNumInput "_-adic Norm" (show $ fromMaybe 0 (getPrime baseInput.norm)) (Just "<= 1 yields normal absolute value; 2 and above use p-adic norm") SetNorm
       , mkNumInput "# of Frames" (show baseInput.maxTick) (Just "Frames between each position; controls speed of animation") SetTick
-      , mkNumInput "Max Int" (show baseInput.maxInt) (Just "Displays all numbers from 0 up to and incl. the max int; for best results, use a power of the number used for the p-adic norm minus one, especially if changing Add To and Mult By") SetMax
+      , mkNumInput "# of Circles" (show baseInput.maxInt) (Just "Use this many circles; for best results, use a power of the number used for the p-adic norm minus one, especially if changing Add To and Mult By") SetMax
       , mkNumInput "Scale" (show baseInput.scale) (Just "Controls distance between dots") SetScale
       , mkNumInput "Radius" (show baseInput.radius) (Just "Controls size of dots") SetRadius
       , mkNumInput "Add To" (show baseInput.addTo) Nothing SetAdd
@@ -117,6 +136,7 @@ eval (SetScale scale next) = passAlong (CC.ChangeScale scale) *> pure next
 eval (SetRadius radius next) = passAlong (CC.ChangeRadius radius) *> pure next
 eval (SetAdd x next) = passAlong (CC.ChangeAddTo x) *> pure next
 eval (SetMult y next) = passAlong (CC.ChangeMultBy y) *> pure next
+eval (SetCycle cycle next) = passAlong (CC.ChangeCycle cycle) *> pure next
 eval (ToggleRepr next) = passAlong CC.ToggleRepr *> pure next
 eval (ToggleAnimation next) = passAlong CC.ToggleAnimation *> pure next
 eval (Reset next) = passAlong CC.Reset *> pure next

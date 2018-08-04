@@ -3501,10 +3501,16 @@ var PS = {};
           return Norm.takeNorm(norm)(getValue(bubble));
       };
   };
+  var changeValue = function (n) {
+      return modifyBubble(function (b) {
+          return setValue(n)(b);
+      });
+  };
   exports["mkBubble"] = mkBubble;
   exports["getValue"] = getValue;
   exports["getOldValue"] = getOldValue;
   exports["setValue"] = setValue;
+  exports["changeValue"] = changeValue;
   exports["getNormedValue"] = getNormedValue;
   exports["modifyBubble"] = modifyBubble;
   exports["linearBy"] = linearBy;
@@ -7222,10 +7228,12 @@ var PS = {};
           throw new Error("Failed pattern match at Foreign line 106, column 1 - line 106, column 55: " + [ tag.constructor.name, value.constructor.name ]);
       };
   };
+  var readBoolean = unsafeReadTagged("Boolean");
   var readString = unsafeReadTagged("String");
   exports["TypeMismatch"] = TypeMismatch;
   exports["unsafeReadTagged"] = unsafeReadTagged;
   exports["readString"] = readString;
+  exports["readBoolean"] = readBoolean;
   exports["fail"] = fail;
   exports["unsafeToForeign"] = $foreign.unsafeToForeign;
   exports["typeOf"] = $foreign.typeOf;
@@ -10659,6 +10667,18 @@ var PS = {};
       };
       return ChangeMultBy;
   })();
+  var ChangeCycle = (function () {
+      function ChangeCycle(value0, value1) {
+          this.value0 = value0;
+          this.value1 = value1;
+      };
+      ChangeCycle.create = function (value0) {
+          return function (value1) {
+              return new ChangeCycle(value0, value1);
+          };
+      };
+      return ChangeCycle;
+  })();
   var ToggleRepr = (function () {
       function ToggleRepr(value0) {
           this.value0 = value0;
@@ -10735,7 +10755,7 @@ var PS = {};
           if (model.coordType instanceof Circular) {
               return PadicVector.value;
           };
-          throw new Error("Failed pattern match at Component.Canvas line 321, column 17 - line 323, column 32: " + [ model.coordType.constructor.name ]);
+          throw new Error("Failed pattern match at Component.Canvas line 325, column 17 - line 327, column 32: " + [ model.coordType.constructor.name ]);
       })();
       return {
           maxInt: model.maxInt,
@@ -10783,11 +10803,6 @@ var PS = {};
   var square = function (n) {
       return n * n;
   };
-  var numInPlace = function (model) {
-      return function (x) {
-          return Data_EuclideanRing.mod(Data_EuclideanRing.euclideanRingInt)(x - model.numIncs | 0)(model.maxInt + 1 | 0);
-      };
-  };
   var normalizeCoords = function (model) {
       return function (coords) {
           var offset = {
@@ -10795,23 +10810,6 @@ var PS = {};
               left: 1.5 * Data_Int.toNumber(model.scale)
           };
           return HalogenHelpers_Coordinates.addOffset(HalogenHelpers_Coordinates.scale(Data_Int.toNumber(model.scale))(coords))(offset);
-      };
-  };
-  var mkColor = function (model) {
-      return function (value) {
-          var p = Data_Maybe.fromMaybe(1)(Norm.getPrime(model.norm));
-          var divisor = (function () {
-              if (model.coordType instanceof Circular) {
-                  return p;
-              };
-              if (model.coordType instanceof PadicVector) {
-                  return 1;
-              };
-              throw new Error("Failed pattern match at Component.Canvas line 188, column 17 - line 191, column 7: " + [ model.coordType.constructor.name ]);
-          })();
-          var step = 360.0 / Data_Int.toNumber(Data_EuclideanRing.div(Data_EuclideanRing.euclideanRingInt)(model.maxInt + 1 | 0)(divisor));
-          var hue = step * Data_Int.toNumber(value);
-          return Color.toHexString(Color.hsv(hue)(1.0)(1.0));
       };
   };
   var mkBubbles = function (maxInt) {
@@ -10839,12 +10837,10 @@ var PS = {};
           cycle: model.cycle
       };
   };
-  var maxValue = function (model) {
-      var $33 = Norm.isPadic(model.norm);
-      if ($33) {
-          return 1;
+  var invert = function (inc) {
+      return function (n) {
+          return Data_EuclideanRing.div(Data_EuclideanRing.euclideanRingInt)(n - inc.addTo | 0)(inc.multBy);
       };
-      return model.maxInt;
   };
   var initialModel = function (input) {
       return {
@@ -10876,16 +10872,19 @@ var PS = {};
   };
   var replaceBubble = function (cycle) {
       return function (maxInt) {
-          return function (bubble) {
-              var $34 = inRange(maxInt)(bubble);
-              if ($34) {
-                  return bubble;
+          return function (inc) {
+              return function (bubble) {
+                  var $33 = inRange(maxInt)(bubble);
+                  if ($33) {
+                      return bubble;
+                  };
+                  var $$new = Data_EuclideanRing.mod(Data_EuclideanRing.euclideanRingInt)(Component_Bubble.getValue(bubble))(maxInt + 1 | 0);
+                  var inverted = invert(inc)($$new);
+                  if (cycle) {
+                      return Component_Bubble.setValue($$new)(bubble);
+                  };
+                  return Component_Bubble.changeValue($$new)(Component_Bubble.mkBubble(inverted));
               };
-              var $$new = Data_EuclideanRing.mod(Data_EuclideanRing.euclideanRingInt)(Component_Bubble.getValue(bubble))(maxInt + 1 | 0);
-              if (cycle) {
-                  return Component_Bubble.setValue($$new)(bubble);
-              };
-              return Component_Bubble.mkBubble($$new);
           };
       };
   };
@@ -10894,8 +10893,8 @@ var PS = {};
           return function (inc) {
               return function (bubbles) {
                   return function (idx) {
-                      return Control_Bind.bind(Control_Monad_ST_Internal.bindST)(Data_Array_ST.modify(idx)(function ($114) {
-                          return replaceBubble(cycle)(maxInt)(Component_Bubble.linearBy(inc.multBy)(inc.addTo)($114));
+                      return Control_Bind.bind(Control_Monad_ST_Internal.bindST)(Data_Array_ST.modify(idx)(function ($119) {
+                          return replaceBubble(cycle)(maxInt)(inc)(Component_Bubble.linearBy(inc.multBy)(inc.addTo)($119));
                       })(bubbles))(function (v) {
                           return Control_Applicative.pure(Control_Monad_ST_Internal.applicativeST)(Data_Unit.unit);
                       });
@@ -10904,27 +10903,19 @@ var PS = {};
           };
       };
   };
-  var getTheta = function (model) {
-      return function (value) {
-          return ($$Math.pi * 2.0 * Data_Int.toNumber(value)) / Data_Int.toNumber(model.maxInt);
-      };
-  };
   var getSize = function (model) {
       return Data_Int.round(4.0 * Data_Int.toNumber(model.scale));
   };
   var getR = function (model) {
       return function (value) {
-          return Data_EuclideanRing.div(Data_Ratio.euclideanRingRatio(Data_Ord.ordInt)(Data_EuclideanRing.euclideanRingInt))(value)(Data_Rational.fromInt(maxValue(model)));
-      };
-  };
-  var toPolar = function (model) {
-      return function (bubble) {
-          var theta = getTheta(model)(Component_Bubble.getValue(bubble));
-          var r = getR(model)(Component_Bubble.getNormedValue(model.norm)(bubble));
-          return {
-              r: Data_Rational.toNumber(r),
-              theta: theta
-          };
+          var maxValue = (function () {
+              var $35 = Norm.isPadic(model.norm);
+              if ($35) {
+                  return 1;
+              };
+              return model.maxInt;
+          })();
+          return Data_EuclideanRing.div(Data_Ratio.euclideanRingRatio(Data_Ord.ordInt)(Data_EuclideanRing.euclideanRingInt))(value)(Data_Rational.fromInt(maxValue));
       };
   };
   var getPower = function (p) {
@@ -10944,7 +10935,7 @@ var PS = {};
                           $copy_m = m + 1 | 0;
                           return;
                       };
-                      throw new Error("Failed pattern match at Component.Canvas line 109, column 5 - line 111, column 40: " + [ n$prime.constructor.name, m.constructor.name ]);
+                      throw new Error("Failed pattern match at Component.Canvas line 105, column 5 - line 107, column 40: " + [ n$prime.constructor.name, m.constructor.name ]);
                   };
                   while (!$tco_done) {
                       $tco_result = $tco_loop($tco_var_n$prime, $copy_m);
@@ -10955,23 +10946,38 @@ var PS = {};
           return go(n)(0);
       };
   };
+  var getFullMax = function (model) {
+      if (model.cycle) {
+          if (model.norm instanceof Norm.Inf) {
+              return model.maxInt;
+          };
+          if (model.norm instanceof Norm.Padic) {
+              return Data_Int.pow(model.norm.value0)(getPower(model.norm.value0)(model.maxInt));
+          };
+          throw new Error("Failed pattern match at Component.Canvas line 112, column 8 - line 114, column 47: " + [ model.norm.constructor.name ]);
+      };
+      return model.maxInt;
+  };
   var getPadicCoord = function (model) {
       return function (n) {
           var p = Data_Maybe.fromMaybe(0)(Norm.getPrime(model.norm));
-          return normalizeCoords(model)(PadicVector_1.toVector(model.maxInt)(p)(n));
+          return normalizeCoords(model)(PadicVector_1.toVector(getFullMax(model))(p)(n));
       };
   };
-  var getFullMax = function (model) {
-      if (model.cycle) {
-          return model.maxInt;
+  var getTheta = function (model) {
+      return function (value) {
+          return ($$Math.pi * 2.0 * Data_Int.toNumber(value)) / Data_Int.toNumber(getFullMax(model));
       };
-      if (model.norm instanceof Norm.Inf) {
-          return model.maxInt;
+  };
+  var toPolar = function (model) {
+      return function (bubble) {
+          var theta = getTheta(model)(Component_Bubble.getValue(bubble));
+          var r = getR(model)(Component_Bubble.getNormedValue(model.norm)(bubble));
+          return {
+              r: Data_Rational.toNumber(r),
+              theta: theta
+          };
       };
-      if (model.norm instanceof Norm.Padic) {
-          return Data_Int.pow(model.norm.value0)(getPower(model.norm.value0)(model.maxInt));
-      };
-      throw new Error("Failed pattern match at Component.Canvas line 116, column 8 - line 118, column 47: " + [ model.norm.constructor.name ]);
   };
   var incAll = function (model) {
       var maxInt = getFullMax(model);
@@ -11009,6 +11015,28 @@ var PS = {};
           quadCoeff: model.quadCoeff,
           cubeCoeff: model.cubeCoeff,
           cycle: model.cycle
+      };
+  };
+  var mkColor = function (model) {
+      return function (value) {
+          var p = Data_Maybe.fromMaybe(1)(Norm.getPrime(model.norm));
+          var divisor = (function () {
+              if (model.coordType instanceof Circular) {
+                  return p;
+              };
+              if (model.coordType instanceof PadicVector) {
+                  return 1;
+              };
+              throw new Error("Failed pattern match at Component.Canvas line 187, column 17 - line 190, column 7: " + [ model.coordType.constructor.name ]);
+          })();
+          var step = 360.0 / Data_Int.toNumber(Data_EuclideanRing.div(Data_EuclideanRing.euclideanRingInt)(getFullMax(model) + 1 | 0)(divisor));
+          var hue = step * Data_Int.toNumber(value);
+          return Color.toHexString(Color.hsv(hue)(1.0)(1.0));
+      };
+  };
+  var numInPlace = function (model) {
+      return function (x) {
+          return Data_EuclideanRing.mod(Data_EuclideanRing.euclideanRingInt)(x - model.numIncs | 0)(getFullMax(model) + 1 | 0);
       };
   };
   var getCoordinates = function (interpolater) {
@@ -11144,30 +11172,30 @@ var PS = {};
               Data_Foldable.for_(Effect.applicativeEffect)(Data_Foldable.foldableArray)(model.bubbles)(drawBubble(v1)(coordGetter)(colorGetter)(model.radius))();
               return Data_Unit.unit;
           };
-          throw new Error("Failed pattern match at Component.Canvas line 343, column 5 - line 351, column 18: " + [ v.constructor.name ]);
+          throw new Error("Failed pattern match at Component.Canvas line 347, column 5 - line 355, column 18: " + [ v.constructor.name ]);
       };
   };
   var redrawStep = Control_Bind.bind(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.get(Halogen_Query_HalogenM.monadStateHalogenM))(function (v) {
       return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
-          var $52 = {};
-          for (var $53 in v1) {
-              if ({}.hasOwnProperty.call(v1, $53)) {
-                  $52[$53] = v1[$53];
+          var $53 = {};
+          for (var $54 in v1) {
+              if ({}.hasOwnProperty.call(v1, $54)) {
+                  $53[$54] = v1[$54];
               };
           };
-          $52.animate = false;
-          return $52;
+          $53.animate = false;
+          return $53;
       }))(function () {
           return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Effect_Class.liftEffect(Halogen_Query_HalogenM.monadEffectHalogenM(Effect_Aff.monadEffectAff))(redraw(v)))(function () {
               return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
-                  var $55 = {};
-                  for (var $56 in v1) {
-                      if ({}.hasOwnProperty.call(v1, $56)) {
-                          $55[$56] = v1[$56];
+                  var $56 = {};
+                  for (var $57 in v1) {
+                      if ({}.hasOwnProperty.call(v1, $57)) {
+                          $56[$57] = v1[$57];
                       };
                   };
-                  $55.animate = true;
-                  return $55;
+                  $56.animate = true;
+                  return $56;
               }))(function () {
                   return Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(Data_Unit.unit);
               });
@@ -11177,12 +11205,7 @@ var PS = {};
   var reinitCache = function (next) {
       return Control_Bind.bind(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.get(Halogen_Query_HalogenM.monadStateHalogenM))(function (v) {
           return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(regenBubbles))(function () {
-              var ints = Data_Array.range(0)(getFullMax(v) - (function () {
-                  if (v.cycle) {
-                      return 0;
-                  };
-                  return 1;
-              })() | 0);
+              var ints = Data_Array.range(0)(getFullMax(v));
               var colorCache = Data_Foldable.foldl(Data_Foldable.foldableArray)(function (acc) {
                   return function (x) {
                       return Data_Map_Internal.insert(Data_Ord.ordInt)(x)(mkColor(v)(x))(acc);
@@ -11203,7 +11226,7 @@ var PS = {};
                           };
                       })(Data_Map_Internal.empty)(ints);
                   };
-                  throw new Error("Failed pattern match at Component.Canvas line 303, column 15 - line 307, column 85: " + [ v.coordType.constructor.name ]);
+                  throw new Error("Failed pattern match at Component.Canvas line 307, column 15 - line 311, column 85: " + [ v.coordType.constructor.name ]);
               })();
               return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
                   var $61 = {};
@@ -11261,7 +11284,7 @@ var PS = {};
               };
               $77.addTo = v.value0;
               return $77;
-          }))(reinitCache(v.value1(Data_Unit.unit)));
+          }))(Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(v.value1(Data_Unit.unit)));
       };
       if (v instanceof ChangeMultBy) {
           return Control_Apply.applySecond(Halogen_Query_HalogenM.applyHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
@@ -11273,7 +11296,7 @@ var PS = {};
               };
               $82.multBy = v.value0;
               return $82;
-          }))(reinitCache(v.value1(Data_Unit.unit)));
+          }))(Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(v.value1(Data_Unit.unit)));
       };
       if (v instanceof ChangeScale) {
           return Control_Apply.applySecond(Halogen_Query_HalogenM.applyHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
@@ -11298,6 +11321,18 @@ var PS = {};
               $92.radius = v.value0;
               return $92;
           }))(Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(v.value1(Data_Unit.unit)));
+      };
+      if (v instanceof ChangeCycle) {
+          return Control_Apply.applySecond(Halogen_Query_HalogenM.applyHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
+              var $97 = {};
+              for (var $98 in v1) {
+                  if ({}.hasOwnProperty.call(v1, $98)) {
+                      $97[$98] = v1[$98];
+                  };
+              };
+              $97.cycle = v.value0;
+              return $97;
+          }))(reinitCache(v.value1(Data_Unit.unit)));
       };
       if (v instanceof ToggleRepr) {
           return Control_Apply.applySecond(Halogen_Query_HalogenM.applyHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(toggleRepr))(reinitCache(v.value0(Data_Unit.unit)));
@@ -11325,14 +11360,14 @@ var PS = {};
                   });
                   if (newTick instanceof Data_Maybe.Just) {
                       return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v2) {
-                          var $104 = {};
-                          for (var $105 in v2) {
-                              if ({}.hasOwnProperty.call(v2, $105)) {
-                                  $104[$105] = v2[$105];
+                          var $109 = {};
+                          for (var $110 in v2) {
+                              if ({}.hasOwnProperty.call(v2, $110)) {
+                                  $109[$110] = v2[$110];
                               };
                           };
-                          $104.time = newTick;
-                          return $104;
+                          $109.time = newTick;
+                          return $109;
                       }))(function () {
                           return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(redrawStep)(function () {
                               return Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(v.value0(Data_Unit.unit));
@@ -11341,23 +11376,23 @@ var PS = {};
                   };
                   if (newTick instanceof Data_Maybe.Nothing) {
                       return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v2) {
-                          var $108 = {};
-                          for (var $109 in v2) {
-                              if ({}.hasOwnProperty.call(v2, $109)) {
-                                  $108[$109] = v2[$109];
+                          var $113 = {};
+                          for (var $114 in v2) {
+                              if ({}.hasOwnProperty.call(v2, $114)) {
+                                  $113[$114] = v2[$114];
                               };
                           };
-                          $108.time = new Data_Maybe.Just(Component_Animation.startTick);
-                          return $108;
+                          $113.time = new Data_Maybe.Just(Component_Animation.startTick);
+                          return $113;
                       }))(function () {
                           return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(redrawStep)(function () {
                               return $$eval(new IncValues(v.value0(Data_Unit.unit)));
                           });
                       });
                   };
-                  throw new Error("Failed pattern match at Component.Canvas line 388, column 7 - line 396, column 40: " + [ newTick.constructor.name ]);
+                  throw new Error("Failed pattern match at Component.Canvas line 394, column 7 - line 402, column 40: " + [ newTick.constructor.name ]);
               };
-              throw new Error("Failed pattern match at Component.Canvas line 382, column 3 - line 396, column 40: " + [ v1.animate.constructor.name ]);
+              throw new Error("Failed pattern match at Component.Canvas line 388, column 3 - line 402, column 40: " + [ v1.animate.constructor.name ]);
           });
       };
       if (v instanceof InitCaches) {
@@ -11366,7 +11401,7 @@ var PS = {};
       if (v instanceof Reset) {
           return reinitCache(v.value0(Data_Unit.unit));
       };
-      throw new Error("Failed pattern match at Component.Canvas line 361, column 1 - line 361, column 56: " + [ v.constructor.name ]);
+      throw new Error("Failed pattern match at Component.Canvas line 365, column 1 - line 365, column 56: " + [ v.constructor.name ]);
   };
   var render = function (model) {
       var size = getSize(model);
@@ -11385,7 +11420,6 @@ var PS = {};
   exports["PadicVector"] = PadicVector;
   exports["mkBubbles"] = mkBubbles;
   exports["initialModel"] = initialModel;
-  exports["maxValue"] = maxValue;
   exports["getPower"] = getPower;
   exports["getFullMax"] = getFullMax;
   exports["getR"] = getR;
@@ -11412,6 +11446,7 @@ var PS = {};
   exports["ChangeRadius"] = ChangeRadius;
   exports["ChangeAddTo"] = ChangeAddTo;
   exports["ChangeMultBy"] = ChangeMultBy;
+  exports["ChangeCycle"] = ChangeCycle;
   exports["ToggleRepr"] = ToggleRepr;
   exports["ToggleAnimation"] = ToggleAnimation;
   exports["IncValues"] = IncValues;
@@ -11419,6 +11454,7 @@ var PS = {};
   exports["Reset"] = Reset;
   exports["MoveTick"] = MoveTick;
   exports["inRange"] = inRange;
+  exports["invert"] = invert;
   exports["replaceBubble"] = replaceBubble;
   exports["incBubble"] = incBubble;
   exports["incAll"] = incAll;
@@ -11740,13 +11776,15 @@ var PS = {};
               };
           };
       };
-  };                                                                                                                    
+  };
+  var onChecked = addForeignPropHandler(Web_HTML_Event_EventTypes.change)("checked")(Foreign.readBoolean);              
   var onValueChange = addForeignPropHandler(Web_HTML_Event_EventTypes.change)("value")(Foreign.readString);
   exports["input"] = input;
   exports["input_"] = input_;
   exports["handler"] = handler;
   exports["onClick"] = onClick;
   exports["onValueChange"] = onValueChange;
+  exports["onChecked"] = onChecked;
 })(PS["Halogen.HTML.Events"] = PS["Halogen.HTML.Events"] || {});
 (function(exports) {
   // Generated by purs version 0.12.0
@@ -11778,8 +11816,7 @@ var PS = {};
   exports["passAlong"] = passAlong;
 })(PS["HalogenHelpers.Communication"] = PS["HalogenHelpers.Communication"] || {});
 (function(exports) {
-  // Generated by purs version 0.12.0
-  "use strict";
+    "use strict";
   var Component_Canvas = PS["Component.Canvas"];
   var Control_Applicative = PS["Control.Applicative"];
   var Control_Apply = PS["Control.Apply"];
@@ -11892,6 +11929,18 @@ var PS = {};
       };
       return SetMult;
   })();
+  var SetCycle = (function () {
+      function SetCycle(value0, value1) {
+          this.value0 = value0;
+          this.value1 = value1;
+      };
+      SetCycle.create = function (value0) {
+          return function (value1) {
+              return new SetCycle(value0, value1);
+          };
+      };
+      return SetCycle;
+  })();
   var ToggleRepr = (function () {
       function ToggleRepr(value0) {
           this.value0 = value0;
@@ -11940,10 +11989,10 @@ var PS = {};
       };
       return HandleMessage;
   })();
-  var toNatural = function ($25) {
+  var toNatural = function ($27) {
       return Data_Filterable.filter(Data_Filterable.filterableMaybe)(function (v) {
           return v >= 0;
-      })(Data_Int.fromString($25));
+      })(Data_Int.fromString($27));
   };
   var $$eval = function (v) {
       if (v instanceof SetNorm) {
@@ -11974,6 +12023,9 @@ var PS = {};
       if (v instanceof SetMult) {
           return Control_Apply.applySecond(Halogen_Query_HalogenM.applyHalogenM)(HalogenHelpers_Communication.passAlong(Component_Canvas.eqSlot)(Component_Canvas.ChangeMultBy.create(v.value0)))(Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(v.value1));
       };
+      if (v instanceof SetCycle) {
+          return Control_Apply.applySecond(Halogen_Query_HalogenM.applyHalogenM)(HalogenHelpers_Communication.passAlong(Component_Canvas.eqSlot)(Component_Canvas.ChangeCycle.create(v.value0)))(Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(v.value1));
+      };
       if (v instanceof ToggleRepr) {
           return Control_Apply.applySecond(Halogen_Query_HalogenM.applyHalogenM)(HalogenHelpers_Communication.passAlong(Component_Canvas.eqSlot)(Component_Canvas.ToggleRepr.create))(Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(v.value0));
       };
@@ -11989,7 +12041,7 @@ var PS = {};
       if (v instanceof HandleMessage) {
           return Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(v.value1);
       };
-      throw new Error("Failed pattern match at Component.App line 110, column 1 - line 110, column 80: " + [ v.constructor.name ]);
+      throw new Error("Failed pattern match at Component.App line 129, column 1 - line 129, column 80: " + [ v.constructor.name ]);
   };
   var baseInput = {
       size: 1024,
@@ -12003,20 +12055,35 @@ var PS = {};
       multBy: 1,
       quadCoeff: 0,
       cubeCoeff: 1,
-      cycle: true
+      cycle: false
   };
   var render = function (v) {
+      var withDescription = function (inputDiv) {
+          return function (descr) {
+              return function (class_) {
+                  var descrDiv = Data_Maybe.maybe([  ])(function (txt) {
+                      return [ Halogen_HTML_Elements.div([ Halogen_HTML_Properties.class_("description") ])([ Halogen_HTML_Core.text(txt) ]) ];
+                  })(descr);
+                  return Halogen_HTML_Elements.div([ Halogen_HTML_Properties.class_(class_) ])(Data_Array.cons(inputDiv)(descrDiv));
+              };
+          };
+      };
       var renderMain = Halogen_HTML_Elements.div([ Halogen_HTML_Properties.class_("pure-u-3-4") ])([ Halogen_HTML.slot(Component_Canvas.Slot.value)(Component_Canvas.component)(baseInput)(Halogen_HTML_Events.input(HandleMessage.create)) ]);
       var mkNumInput = function (text) {
           return function (placeholder) {
               return function (descr) {
                   return function (query) {
                       var inputDiv = Halogen_HTML_Elements.div_([ Halogen_HTML_Elements.label_([ Halogen_HTML_Core.text(text + ": ") ]), Halogen_HTML_Elements.input([ Halogen_HTML_Properties.class_("attr-numeric"), Halogen_HTML_Properties.type_(Halogen_HTML_Core.inputTypeIsProp)(DOM_HTML_Indexed_InputType.InputNumber.value), Halogen_HTML_Events.onValueChange(Control_Bind.composeKleisli(Data_Maybe.bindMaybe)(toNatural)(Halogen_HTML_Events.input(query))), Halogen_HTML_Properties.title(text), Halogen_HTML_Properties.prop(Halogen_HTML_Core.intIsProp)("maxLength")(4), Halogen_HTML_Properties.placeholder(placeholder), Halogen_HTML_Properties.min(0.0) ]) ]);
-                      var descrDiv = Data_Maybe.maybe([  ])(function (txt) {
-                          return [ Halogen_HTML_Elements.div([ Halogen_HTML_Properties.class_("description") ])([ Halogen_HTML_Core.text(txt) ]) ];
-                      })(descr);
-                      return Halogen_HTML_Elements.div([ Halogen_HTML_Properties.class_("input-div") ])(Data_Array.cons(inputDiv)(descrDiv));
+                      return withDescription(inputDiv)(descr)("input-div");
                   };
+              };
+          };
+      };
+      var mkCheckbox = function (text) {
+          return function (descr) {
+              return function (query) {
+                  var inputDiv = Halogen_HTML_Elements.div_([ Halogen_HTML_Elements.label_([ Halogen_HTML_Core.text(text + ": ") ]), Halogen_HTML_Elements.input([ Halogen_HTML_Properties.class_("attr-boolean"), Halogen_HTML_Properties.type_(Halogen_HTML_Core.inputTypeIsProp)(DOM_HTML_Indexed_InputType.InputCheckbox.value), Halogen_HTML_Events.onChecked(Halogen_HTML_Events.input(query)), Halogen_HTML_Properties.title(text) ]) ]);
+                  return withDescription(inputDiv)(descr)("checkbox-div");
               };
           };
       };
@@ -12024,16 +12091,13 @@ var PS = {};
           return function (class_) {
               return function (description) {
                   return function (query) {
-                      var descrDiv = Data_Maybe.maybe([  ])(function (txt) {
-                          return [ Halogen_HTML_Elements.div([ Halogen_HTML_Properties.class_("description") ])([ Halogen_HTML_Core.text(txt) ]) ];
-                      })(description);
                       var buttonDiv = Halogen_HTML_Elements.button([ Halogen_HTML_Properties.class_("pure-button button-" + class_), Halogen_HTML_Events.onClick(Halogen_HTML_Events.input_(query)), Halogen_HTML_Properties.type_(Halogen_HTML_Core.buttonTypeIsProp)(DOM_HTML_Indexed_ButtonType.ButtonButton.value) ])([ Halogen_HTML_Core.text(text) ]);
-                      return Halogen_HTML_Elements.div([ Halogen_HTML_Properties.class_("button-div") ])(Data_Array.cons(buttonDiv)(descrDiv));
+                      return withDescription(buttonDiv)(description)("button-div");
                   };
               };
           };
       };
-      var renderSidebar = Halogen_HTML_Elements.div([ Halogen_HTML_Properties.class_("pure-u-1-4 sidebar") ])([ mkButton("Toggle Representation")("primary")(new Data_Maybe.Just("Between fractal given by the p-adic representation, or circles given by the p-adic norm"))(ToggleRepr.create), mkButton("Toggle Animation")("warning")(new Data_Maybe.Just("Turn animation on and off"))(ToggleAnimation.create), mkButton("Reset")("error")(new Data_Maybe.Just("Reset animation"))(Reset.create), mkNumInput("_-adic Norm")(Data_Show.show(Data_Show.showInt)(Data_Maybe.fromMaybe(0)(Norm.getPrime(baseInput.norm))))(new Data_Maybe.Just("<= 1 yields normal absolute value; 2 and above use p-adic norm"))(SetNorm.create), mkNumInput("# of Frames")(Data_Show.show(Data_Show.showInt)(baseInput.maxTick))(new Data_Maybe.Just("Frames between each position; controls speed of animation"))(SetTick.create), mkNumInput("Max Int")(Data_Show.show(Data_Show.showInt)(baseInput.maxInt))(new Data_Maybe.Just("Displays all numbers from 0 up to and incl. the max int; for best results, use a power of the number used for the p-adic norm minus one, especially if changing Add To and Mult By"))(SetMax.create), mkNumInput("Scale")(Data_Show.show(Data_Show.showInt)(baseInput.scale))(new Data_Maybe.Just("Controls distance between dots"))(SetScale.create), mkNumInput("Radius")(Data_Show.show(Data_Show.showInt)(baseInput.radius))(new Data_Maybe.Just("Controls size of dots"))(SetRadius.create), mkNumInput("Add To")(Data_Show.show(Data_Show.showInt)(baseInput.addTo))(Data_Maybe.Nothing.value)(SetAdd.create), mkNumInput("Mult By")(Data_Show.show(Data_Show.showInt)(baseInput.multBy))(new Data_Maybe.Just("For \"Add To\" b and \"Mult By\" a, this will change a number n to a*n + b"))(SetMult.create) ]);
+      var renderSidebar = Halogen_HTML_Elements.div([ Halogen_HTML_Properties.class_("pure-u-1-4 sidebar") ])([ mkButton("Toggle Representation")("primary")(new Data_Maybe.Just("Between fractal given by the p-adic representation, or circles given by the p-adic norm"))(ToggleRepr.create), mkButton("Toggle Animation")("warning")(new Data_Maybe.Just("Turn animation on and off"))(ToggleAnimation.create), mkButton("Reset")("error")(new Data_Maybe.Just("Reset animation"))(Reset.create), mkCheckbox("Cycle")(new Data_Maybe.Just("Wrap numbers around from the next highest power of the norm after Max Int to Zero cyclically"))(SetCycle.create), mkNumInput("_-adic Norm")(Data_Show.show(Data_Show.showInt)(Data_Maybe.fromMaybe(0)(Norm.getPrime(baseInput.norm))))(new Data_Maybe.Just("<= 1 yields normal absolute value; 2 and above use p-adic norm"))(SetNorm.create), mkNumInput("# of Frames")(Data_Show.show(Data_Show.showInt)(baseInput.maxTick))(new Data_Maybe.Just("Frames between each position; controls speed of animation"))(SetTick.create), mkNumInput("# of Circles")(Data_Show.show(Data_Show.showInt)(baseInput.maxInt))(new Data_Maybe.Just("Use this many circles; for best results, use a power of the number used for the p-adic norm minus one, especially if changing Add To and Mult By"))(SetMax.create), mkNumInput("Scale")(Data_Show.show(Data_Show.showInt)(baseInput.scale))(new Data_Maybe.Just("Controls distance between dots"))(SetScale.create), mkNumInput("Radius")(Data_Show.show(Data_Show.showInt)(baseInput.radius))(new Data_Maybe.Just("Controls size of dots"))(SetRadius.create), mkNumInput("Add To")(Data_Show.show(Data_Show.showInt)(baseInput.addTo))(Data_Maybe.Nothing.value)(SetAdd.create), mkNumInput("Mult By")(Data_Show.show(Data_Show.showInt)(baseInput.multBy))(new Data_Maybe.Just("For \"Add To\" b and \"Mult By\" a, this will change a number n to a*n + b"))(SetMult.create) ]);
       return Halogen_HTML_Elements.div([ Halogen_HTML_Properties.class_("pure-g") ])([ renderSidebar, renderMain ]);
   };
   var component = Halogen_Component.parentComponent(Component_Canvas.ordSlot)({
@@ -12050,6 +12114,7 @@ var PS = {};
   exports["SetRadius"] = SetRadius;
   exports["SetAdd"] = SetAdd;
   exports["SetMult"] = SetMult;
+  exports["SetCycle"] = SetCycle;
   exports["ToggleRepr"] = ToggleRepr;
   exports["ToggleAnimation"] = ToggleAnimation;
   exports["Reset"] = Reset;
