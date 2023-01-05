@@ -221,6 +221,7 @@ data Query a = ChangeMax Int (Unit -> a)
              | ChangeAddTo Int (Unit -> a)
              | ChangeMultBy Int (Unit -> a)
              | ChangeQuadBy Int (Unit -> a)
+             | ChangeCubeBy Int (Unit -> a)
              | ToggleRepr (Unit -> a)
              | ToggleAnimation (Unit -> a)
              | IncValues a
@@ -250,7 +251,7 @@ type Inc = { addTo :: Int
 
 incBubble :: forall h. Int -> Inc -> STArray h Bubble -> Int -> ST h Unit
 incBubble maxInt inc bubbles idx = do
-  _ <- AST.modify idx (replaceBubble maxInt inc <<< B.quadBy inc.sqrBy inc.multBy inc.addTo) bubbles
+  _ <- AST.modify idx (replaceBubble maxInt inc <<< B.cubeBy inc.cubeBy inc.sqrBy inc.multBy inc.addTo) bubbles
   pure unit
 
 incAll :: Model -> Model
@@ -359,6 +360,8 @@ eval (ChangeMultBy multBy reply) =
   H.modify_ (_ { multBy = multBy } ) *> pure (reply unit)
 eval (ChangeQuadBy quadCoeff reply) =
     H.modify_ (_ { quadCoeff = quadCoeff } ) *> pure (reply unit)
+eval (ChangeCubeBy cubeCoeff reply) =
+    H.modify_ (_ { cubeCoeff = cubeCoeff } ) *> pure (reply unit)
 eval (ChangeScale scale reply) =
   H.modify_ (_ { scale = scale } ) *> reinitCache (reply unit)
 eval (ChangeRadius radius reply) =

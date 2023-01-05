@@ -59,7 +59,7 @@ quadBy sqr by plus =
 cubeBy :: Int -> Int -> Int -> Int -> Bubble -> Bubble
 cubeBy cube sqr by plus =
   modifyBubble (\b -> let v = getValue b
-                      in setValue (round <<< Math.sqrt <<< toNumber $ v*v*v*cube + v*v*sqr + v*by + plus) b)
+                      in setValue (v*v*v*cube + v*v*sqr + v*by + plus) b)
 
 decValue :: Bubble -> Bubble
 decValue = modifyBubble (\b -> setValue (getValue b - 1) b)

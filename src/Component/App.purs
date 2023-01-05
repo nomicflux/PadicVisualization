@@ -26,7 +26,7 @@ baseInput = { size: 1024
             , addTo: 1
             , multBy: 1
             , quadCoeff: 0
-            , cubeCoeff: 1
+            , cubeCoeff: 0
             }
 
 data Query a = SetNorm Int a
@@ -37,6 +37,7 @@ data Query a = SetNorm Int a
              | SetAdd Int a
              | SetMult Int a
              | SetQuad Int a
+             | SetCube Int a
              | ToggleRepr a
              | ToggleAnimation a
              | Reset a
@@ -112,12 +113,13 @@ render _ = HH.div [ HP.class_ $ HH.ClassName "pure-g" ]
       , mkButton "Reset" "error" (Just "Reset animation") Reset
       , mkNumInput "_-adic Norm" (show $ fromMaybe 0 (getPrime baseInput.norm)) (Just "<= 1 yields normal absolute value; 2 and above use p-adic norm") SetNorm
       , mkNumInput "# of Frames" (show baseInput.maxTick) (Just "Frames between each position; controls speed of animation") SetTick
-      , mkNumInput "# of Circles" (show baseInput.power) (Just "Use this p^(power) many circles; for example, in the 3-adic norm, setting this to 3 will use 27 circles") SetMax
+      , mkNumInput "p^# of Circles" (show baseInput.power) (Just "Use this p^(power) many circles; for example, in the 3-adic norm, setting this to 3 will use 27 circles") SetMax
       , mkNumInput "Scale" (show baseInput.scale) (Just "Controls distance between dots") SetScale
       , mkNumInput "Radius" (show baseInput.radius) (Just "Controls size of dots") SetRadius
-      , mkNumInput "Add To" (show baseInput.addTo) Nothing SetAdd
-      , mkNumInput "Mult By" (show baseInput.multBy) (Just "For \"Add To\" b and \"Mult By\" a, this will change a number n to a*n + b") SetMult
+      , mkNumInput "Constant Term" (show baseInput.addTo) (Just "Set constant term in ax^3 + bx^2 + cx + d") SetAdd
+      , mkNumInput "Linear Coefficient" (show baseInput.multBy) (Just "Set linear component") SetMult
       , mkNumInput "Quad Coefficient" (show baseInput.quadCoeff) (Just "Set quadratic component") SetQuad
+      , mkNumInput "Cube Coefficient" (show baseInput.cubeCoeff) (Just "Set cubic component") SetCube
       ]
 
     renderMain :: H.ParentHTML Query CC.Query CC.Slot Aff
@@ -136,6 +138,7 @@ eval (SetRadius radius next) = passAlong (CC.ChangeRadius radius) *> pure next
 eval (SetAdd x next) = passAlong (CC.ChangeAddTo x) *> pure next
 eval (SetMult y next) = passAlong (CC.ChangeMultBy y) *> pure next
 eval (SetQuad q next) = passAlong (CC.ChangeQuadBy q) *> pure next
+eval (SetCube c next) = passAlong (CC.ChangeCubeBy c) *> pure next
 eval (ToggleRepr next) = passAlong CC.ToggleRepr *> pure next
 eval (ToggleAnimation next) = passAlong CC.ToggleAnimation *> pure next
 eval (Reset next) = passAlong CC.Reset *> pure next
