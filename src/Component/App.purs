@@ -36,6 +36,7 @@ data Query a = SetNorm Int a
              | SetRadius Int a
              | SetAdd Int a
              | SetMult Int a
+             | SetQuad Int a
              | ToggleRepr a
              | ToggleAnimation a
              | Reset a
@@ -116,6 +117,7 @@ render _ = HH.div [ HP.class_ $ HH.ClassName "pure-g" ]
       , mkNumInput "Radius" (show baseInput.radius) (Just "Controls size of dots") SetRadius
       , mkNumInput "Add To" (show baseInput.addTo) Nothing SetAdd
       , mkNumInput "Mult By" (show baseInput.multBy) (Just "For \"Add To\" b and \"Mult By\" a, this will change a number n to a*n + b") SetMult
+      , mkNumInput "Quad Coefficient" (show baseInput.quadCoeff) (Just "Set quadratic component") SetQuad
       ]
 
     renderMain :: H.ParentHTML Query CC.Query CC.Slot Aff
@@ -133,6 +135,7 @@ eval (SetScale scale next) = passAlong (CC.ChangeScale scale) *> pure next
 eval (SetRadius radius next) = passAlong (CC.ChangeRadius radius) *> pure next
 eval (SetAdd x next) = passAlong (CC.ChangeAddTo x) *> pure next
 eval (SetMult y next) = passAlong (CC.ChangeMultBy y) *> pure next
+eval (SetQuad q next) = passAlong (CC.ChangeQuadBy q) *> pure next
 eval (ToggleRepr next) = passAlong CC.ToggleRepr *> pure next
 eval (ToggleAnimation next) = passAlong CC.ToggleAnimation *> pure next
 eval (Reset next) = passAlong CC.Reset *> pure next
