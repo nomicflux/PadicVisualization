@@ -17,7 +17,7 @@ import Norm (Norm(..), getPrime)
 
 baseInput :: CC.Input
 baseInput = { size: 1024
-            , maxInt: 728
+            , power: 5
             , norm: Padic 3
             , coordType: CC.PadicVector
             , maxTick: 64
@@ -27,7 +27,6 @@ baseInput = { size: 1024
             , multBy: 1
             , quadCoeff: 0
             , cubeCoeff: 1
-            , cycle: false
             }
 
 data Query a = SetNorm Int a
@@ -37,7 +36,6 @@ data Query a = SetNorm Int a
              | SetRadius Int a
              | SetAdd Int a
              | SetMult Int a
-             | SetCycle Boolean a
              | ToggleRepr a
              | ToggleAnimation a
              | Reset a
@@ -111,10 +109,9 @@ render _ = HH.div [ HP.class_ $ HH.ClassName "pure-g" ]
       [ mkButton "Toggle Representation" "primary" (Just "Between fractal given by the p-adic representation, or circles given by the p-adic norm") ToggleRepr
       , mkButton "Toggle Animation" "warning" (Just "Turn animation on and off") ToggleAnimation
       , mkButton "Reset" "error" (Just "Reset animation") Reset
-      , mkCheckbox "Cycle" (Just "Wrap numbers around from the next highest power of the norm after Max Int to Zero cyclically") SetCycle
       , mkNumInput "_-adic Norm" (show $ fromMaybe 0 (getPrime baseInput.norm)) (Just "<= 1 yields normal absolute value; 2 and above use p-adic norm") SetNorm
       , mkNumInput "# of Frames" (show baseInput.maxTick) (Just "Frames between each position; controls speed of animation") SetTick
-      , mkNumInput "# of Circles" (show baseInput.maxInt) (Just "Use this many circles; for best results, use a power of the number used for the p-adic norm minus one, especially if changing Add To and Mult By") SetMax
+      , mkNumInput "# of Circles" (show baseInput.power) (Just "Use this p^(power) many circles; for example, in the 3-adic norm, setting this to 3 will use 27 circles") SetMax
       , mkNumInput "Scale" (show baseInput.scale) (Just "Controls distance between dots") SetScale
       , mkNumInput "Radius" (show baseInput.radius) (Just "Controls size of dots") SetRadius
       , mkNumInput "Add To" (show baseInput.addTo) Nothing SetAdd
@@ -129,14 +126,13 @@ render _ = HH.div [ HP.class_ $ HH.ClassName "pure-g" ]
 eval :: forall m. Query ~> H.ParentDSL Unit Query CC.Query CC.Slot CC.Message m
 eval (SetNorm normNum next) =
   let norm = if normNum <= 1 then Inf else Padic normNum
-  in passAlong (CC.ChangeNorm norm) *> pure next
+  in passAlong (CC.ChangeNorm norm) *> passAlong CC.Reset *> pure next
 eval (SetMax max next) = passAlong (CC.ChangeMax max) *> pure next
 eval (SetTick max next) = passAlong (CC.ChangeTick max) *> pure next
 eval (SetScale scale next) = passAlong (CC.ChangeScale scale) *> pure next
 eval (SetRadius radius next) = passAlong (CC.ChangeRadius radius) *> pure next
 eval (SetAdd x next) = passAlong (CC.ChangeAddTo x) *> pure next
 eval (SetMult y next) = passAlong (CC.ChangeMultBy y) *> pure next
-eval (SetCycle cycle next) = passAlong (CC.ChangeCycle cycle) *> pure next
 eval (ToggleRepr next) = passAlong CC.ToggleRepr *> pure next
 eval (ToggleAnimation next) = passAlong CC.ToggleAnimation *> pure next
 eval (Reset next) = passAlong CC.Reset *> pure next

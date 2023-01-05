@@ -42,6 +42,7 @@ derive instance ordSlot :: Ord Slot
 data CoordType = Circular | PadicVector
 
 type Model = { maxInt :: Int
+             , power :: Int
              , norm :: Norm
              , bubbles :: Array Bubble
              , time :: Maybe Tick
@@ -58,11 +59,10 @@ type Model = { maxInt :: Int
              , multBy :: Int
              , quadCoeff :: Int
              , cubeCoeff :: Int
-             , cycle :: Boolean
              }
 
 type Input = { size :: Int
-             , maxInt :: Int
+             , power :: Int
              , norm :: Norm
              , coordType :: CoordType
              , maxTick :: Int
@@ -72,47 +72,33 @@ type Input = { size :: Int
              , multBy :: Int
              , quadCoeff :: Int
              , cubeCoeff :: Int
-             , cycle :: Boolean
              }
 
 mkBubbles :: Int -> Array Bubble
 mkBubbles maxInt = B.mkBubble <$> (A.range 0 maxInt)
 
 initialModel :: Input -> Model
-initialModel input = { maxInt: input.maxInt
-                     , norm: input.norm
-                     , bubbles: mkBubbles input.maxInt
-                     , time: Nothing
-                     , size: input.size
-                     , numIncs: 0
-                     , coordType: input.coordType
-                     , cache: M.empty
-                     , colorCache: M.empty
-                     , maxTick: input.maxTick
-                     , animate: true
-                     , scale: input.scale
-                     , radius: input.radius
-                     , addTo: input.addTo
-                     , multBy: input.multBy
-                     , quadCoeff: input.quadCoeff
-                     , cubeCoeff: input.cubeCoeff
-                     , cycle: input.cycle
-                     }
-
-getPower :: Int -> Int -> Int
-getPower p n = go n 0
-  where
-    go n' m
-      | n' < p = m + 1
-      | otherwise = go (n' / p) (m + 1)
-
-getFullMax :: Model -> Int
-getFullMax model =
-  if model.cycle
-  then case model.norm of
-    Inf -> model.maxInt
-    Padic p -> pow p (getPower p model.maxInt)
-  else model.maxInt
+initialModel input =
+  let maxInt = pow (fromMaybe 1 (getPrime input.norm)) input.power
+  in { power: input.power
+     , norm: input.norm
+     , maxInt: maxInt
+     , bubbles: mkBubbles maxInt
+     , time: Nothing
+     , size: input.size
+     , numIncs: 0
+     , coordType: input.coordType
+     , cache: M.empty
+     , colorCache: M.empty
+     , maxTick: input.maxTick
+     , animate: true
+     , scale: input.scale
+     , radius: input.radius
+     , addTo: input.addTo
+     , multBy: input.multBy
+     , quadCoeff: input.quadCoeff
+     , cubeCoeff: input.cubeCoeff
+     }
 
 getR :: Model -> Rational -> Rational
 getR model value = value / fromInt maxValue
@@ -120,7 +106,7 @@ getR model value = value / fromInt maxValue
     maxValue = if isPadic model.norm then 1 else model.maxInt
 
 getTheta :: Model -> Int -> Number
-getTheta model value = Math.pi * 2.0 * (toNumber value) / (toNumber $ getFullMax model)
+getTheta model value = Math.pi * 2.0 * (toNumber value) / (toNumber model.maxInt)
 
 toPolar :: Model -> Bubble -> PolarCoordinates
 toPolar model bubble =
@@ -143,7 +129,7 @@ getCircleCoord model n =
 getPadicCoord :: Model -> Int -> Coordinates
 getPadicCoord model n =
   let p = fromMaybe 0 (getPrime model.norm)
-  in normalizeCoords model $ PV.toVector (getFullMax model) p n
+  in normalizeCoords model $ PV.toVector model.maxInt p n
 
 getCoordinates :: (Number -> Number -> Number) ->
                   Map Int Coordinates -> Number ->
@@ -176,7 +162,7 @@ component = H.lifecycleComponent { initialState: initialModel
                                  }
 
 numInPlace :: Model -> Int -> Int
-numInPlace model x = (x - model.numIncs) `mod` (getFullMax model + 1)
+numInPlace model x = (x - model.numIncs) `mod` (model.maxInt + 1)
 
 square :: Number -> Number
 square n = n * n
@@ -187,7 +173,7 @@ mkColor model value =
       divisor = case model.coordType of
         Circular -> p
         PadicVector -> 1
-      step = 360.0 / toNumber ((getFullMax model + 1) / divisor)
+      step = 360.0 / toNumber ((model.maxInt + 1) / divisor)
       hue = step * toNumber value
   in Co.toHexString (Co.hsv hue 1.0 1.0)
 
@@ -234,7 +220,6 @@ data Query a = ChangeMax Int (Unit -> a)
              | ChangeRadius Int (Unit -> a)
              | ChangeAddTo Int (Unit -> a)
              | ChangeMultBy Int (Unit -> a)
-             | ChangeCycle Boolean (Unit -> a)
              | ToggleRepr (Unit -> a)
              | ToggleAnimation (Unit -> a)
              | IncValues a
@@ -249,16 +234,12 @@ inRange maxInt bubble =
   let v = B.getValue bubble
   in v <= maxInt && v >= 0
 
-invert :: Inc -> Int -> Int
-invert inc n = (n - inc.addTo) / inc.multBy
-
-replaceBubble :: Boolean -> Int -> Inc -> Bubble -> Bubble
-replaceBubble cycle maxInt inc bubble =
+replaceBubble :: Int -> Inc -> Bubble -> Bubble
+replaceBubble maxInt inc bubble =
   if inRange maxInt bubble
   then bubble
   else let new = B.getValue bubble `mod` (maxInt + 1)
-           inverted = invert inc new
-       in if cycle then B.setValue new bubble else B.changeValue new (B.mkBubble inverted)
+       in B.setValue new bubble
 
 type Inc = { addTo :: Int
            , multBy :: Int
@@ -266,16 +247,14 @@ type Inc = { addTo :: Int
            , cubeBy :: Int
            }
 
-incBubble :: forall h. Boolean -> Int -> Inc -> STArray h Bubble -> Int -> ST h Unit
-incBubble cycle maxInt inc bubbles idx = do
-  _ <- AST.modify idx (replaceBubble cycle maxInt inc <<< B.linearBy inc.multBy inc.addTo) bubbles
+incBubble :: forall h. Int -> Inc -> STArray h Bubble -> Int -> ST h Unit
+incBubble maxInt inc bubbles idx = do
+  _ <- AST.modify idx (replaceBubble maxInt inc <<< B.linearBy inc.multBy inc.addTo) bubbles
   pure unit
 
 incAll :: Model -> Model
 incAll model =
   let
-    maxInt = getFullMax model
-
     inc = { addTo: model.addTo
           , multBy: model.multBy
           , sqrBy: model.quadCoeff
@@ -283,7 +262,7 @@ incAll model =
           }
 
     changer :: forall h. STArray h Bubble -> Int -> ST h Unit
-    changer = incBubble model.cycle maxInt inc
+    changer = incBubble model.maxInt inc
 
     newBubblesST :: forall h. Array Bubble -> ST h (Array Bubble)
     newBubblesST bubbles = do
@@ -300,7 +279,7 @@ reinitCache :: forall a. a -> H.ComponentDSL Model Query Message Aff a
 reinitCache next =  do
   model <- H.get
   H.modify_ regenBubbles
-  let ints = A.range 0 $ getFullMax model
+  let ints = A.range 0 model.maxInt
       emptyCache :: Map Int Coordinates
       emptyCache = M.empty
 
@@ -333,7 +312,12 @@ regenBubbles model = model { bubbles = mkBubbles model.maxInt
                            }
 
 changeMax :: Int -> Model -> Model
-changeMax maxInt model = model { maxInt = maxInt }
+changeMax power model =
+  let x = case model.norm of
+        Padic p -> p
+        Inf -> 1
+  in model { maxInt = pow x power - 1,
+             power = power }
 
 redraw :: Model -> Effect Unit
 redraw model =
@@ -363,7 +347,8 @@ redrawStep = do
   pure unit
 
 eval :: Query ~> H.ComponentDSL Model Query Message Aff
-eval (ChangeMax max reply) = H.modify_ (changeMax max) *> reinitCache (reply unit)
+eval (ChangeMax power reply) =
+  H.modify_ (changeMax power) *> reinitCache (reply unit)
 eval (ChangeNorm norm reply) = H.modify_ (_ { norm = norm }) *> reinitCache (reply unit)
 eval (ChangeTick tick reply) =
   H.modify_ (_ { maxTick = tick } ) *> pure (reply unit)
@@ -375,8 +360,6 @@ eval (ChangeScale scale reply) =
   H.modify_ (_ { scale = scale } ) *> reinitCache (reply unit)
 eval (ChangeRadius radius reply) =
   H.modify_ (_ { radius = radius } ) *> pure (reply unit)
-eval (ChangeCycle cycle reply) =
-  H.modify_ (_ { cycle = cycle }) *> reinitCache (reply unit)
 eval (ToggleRepr reply) = H.modify_ toggleRepr *> reinitCache (reply unit)
 eval (ToggleAnimation reply) = H.modify_ toggleAnimation *> reinitCache (reply unit)
 eval (IncValues next) = do
@@ -401,4 +384,7 @@ eval (MoveTick reply) = do
           redrawStep
           eval (IncValues (reply unit))
 eval (InitCaches next) = reinitCache next
-eval (Reset reply) = reinitCache (reply unit)
+eval (Reset reply) = do
+  model <- H.get
+  H.modify_ (changeMax model.power)
+  reinitCache (reply unit)
