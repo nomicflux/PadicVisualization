@@ -44,7 +44,7 @@ data CoordType = Circular | PadicVector
 type Model = { maxInt :: Int
              , power :: Int
              , norm :: Norm
-             , bubbles :: Array Bubble
+             , bubbles :: Array (Maybe Bubble)
              , time :: Maybe Tick
              , size :: Int
              , numIncs :: Int
@@ -59,6 +59,7 @@ type Model = { maxInt :: Int
              , multBy :: Int
              , quadCoeff :: Int
              , cubeCoeff :: Int
+             , sqrt :: Boolean
              }
 
 type Input = { size :: Int
@@ -72,10 +73,11 @@ type Input = { size :: Int
              , multBy :: Int
              , quadCoeff :: Int
              , cubeCoeff :: Int
+             , sqrt :: Boolean
              }
 
-mkBubbles :: Int -> Array Bubble
-mkBubbles maxInt = B.mkBubble <$> (A.range 0 maxInt)
+mkBubbles :: Int -> Array (Maybe Bubble)
+mkBubbles maxInt = (Just <<< B.mkBubble) <$> (A.range 0 maxInt)
 
 initialModel :: Input -> Model
 initialModel input =
@@ -98,6 +100,7 @@ initialModel input =
      , multBy: input.multBy
      , quadCoeff: input.quadCoeff
      , cubeCoeff: input.cubeCoeff
+     , sqrt: input.sqrt
      }
 
 getR :: Model -> Rational -> Rational
@@ -191,9 +194,10 @@ drawBubble :: Ca.Context2D ->
               (Bubble -> Coordinates) ->
               (Bubble -> String) ->
               Int ->
-              Bubble ->
+              Maybe Bubble ->
               Effect Unit
-drawBubble ctx coordGetter colorGetter radius bubble =
+drawBubble _ _ _ _ Nothing = pure unit
+drawBubble ctx coordGetter colorGetter radius (Just bubble) =
   let coords = coordGetter bubble
       color = colorGetter bubble
   in drawCircle ctx coords (toNumber radius) color
@@ -222,6 +226,7 @@ data Query a = ChangeMax Int (Unit -> a)
              | ChangeMultBy Int (Unit -> a)
              | ChangeQuadBy Int (Unit -> a)
              | ChangeCubeBy Int (Unit -> a)
+             | ChangeSqrt Boolean (Unit -> a)
              | ToggleRepr (Unit -> a)
              | ToggleAnimation (Unit -> a)
              | IncValues a
@@ -247,11 +252,18 @@ type Inc = { addTo :: Int
            , multBy :: Int
            , sqrBy :: Int
            , cubeBy :: Int
+           , sqrt :: Boolean
            }
 
-incBubble :: forall h. Int -> Inc -> STArray h Bubble -> Int -> ST h Unit
-incBubble maxInt inc bubbles idx = do
-  _ <- AST.modify idx (replaceBubble maxInt inc <<< B.cubeBy inc.cubeBy inc.sqrBy inc.multBy inc.addTo) bubbles
+bubbleFn :: Norm -> Int -> Inc -> (Maybe Bubble) -> (Maybe Bubble)
+bubbleFn norm steps inc =
+  if inc.sqrt
+  then \mb -> mb >>= (B.sqrtBubble norm steps <<< (B.cubeBy inc.cubeBy inc.sqrBy inc.multBy inc.addTo))
+  else map (B.cubeBy inc.cubeBy inc.sqrBy inc.multBy inc.addTo)
+
+incBubble :: forall h. Model -> Inc -> STArray h (Maybe Bubble) -> Int -> ST h Unit
+incBubble model inc bubbles idx = do
+  _ <- AST.modify idx (map (replaceBubble model.maxInt inc) <<< bubbleFn model.norm (model.power - 1) inc) bubbles
   pure unit
 
 incAll :: Model -> Model
@@ -261,12 +273,13 @@ incAll model =
           , multBy: model.multBy
           , sqrBy: model.quadCoeff
           , cubeBy: model.cubeCoeff
+          , sqrt: model.sqrt
           }
 
-    changer :: forall h. STArray h Bubble -> Int -> ST h Unit
-    changer = incBubble model.maxInt inc
+    changer :: forall h. STArray h (Maybe Bubble) -> Int -> ST h Unit
+    changer = incBubble model inc
 
-    newBubblesST :: forall h. Array Bubble -> ST h (Array Bubble)
+    newBubblesST :: forall h. Array (Maybe Bubble) -> ST h (Array (Maybe Bubble))
     newBubblesST bubbles = do
       bubblesST <- AST.thaw bubbles
       _ <- ST.for 0 (A.length bubbles) (changer bubblesST)
@@ -355,13 +368,15 @@ eval (ChangeNorm norm reply) = H.modify_ (_ { norm = norm }) *> reinitCache (rep
 eval (ChangeTick tick reply) =
   H.modify_ (_ { maxTick = tick } ) *> pure (reply unit)
 eval (ChangeAddTo addTo reply) =
-  H.modify_ (_ { addTo = addTo } ) *> pure (reply unit)
+  H.modify_ (_ { addTo = addTo } ) *> reinitCache (reply unit)
 eval (ChangeMultBy multBy reply) =
-  H.modify_ (_ { multBy = multBy } ) *> pure (reply unit)
+  H.modify_ (_ { multBy = multBy } ) *> reinitCache (reply unit)
 eval (ChangeQuadBy quadCoeff reply) =
-    H.modify_ (_ { quadCoeff = quadCoeff } ) *> pure (reply unit)
+  H.modify_ (_ { quadCoeff = quadCoeff } ) *> reinitCache (reply unit)
 eval (ChangeCubeBy cubeCoeff reply) =
-    H.modify_ (_ { cubeCoeff = cubeCoeff } ) *> pure (reply unit)
+  H.modify_ (_ { cubeCoeff = cubeCoeff } ) *> reinitCache (reply unit)
+eval (ChangeSqrt b reply) =
+  H.modify_ (_ { sqrt = b }) *> reinitCache (reply unit)
 eval (ChangeScale scale reply) =
   H.modify_ (_ { scale = scale } ) *> reinitCache (reply unit)
 eval (ChangeRadius radius reply) =
