@@ -4,6 +4,7 @@ import Prelude
 
 import Data.Int (round, toNumber)
 import Data.List as L
+import Data.List (List(..))
 import Data.Maybe (Maybe(..))
 import Data.Rational (Rational)
 import Math as Math
@@ -13,6 +14,7 @@ import Roots as Roots
 newtype Bubble = Bubble { oldValue :: Maybe Int
                         , value :: Int
                         }
+derive instance eqBubble :: Eq Bubble
 
 mkBubble :: Int -> Bubble
 mkBubble value = Bubble { oldValue: Nothing
@@ -28,8 +30,8 @@ getOldValue (Bubble b) = b.oldValue
 setValue :: Int -> Bubble -> Bubble
 setValue n (Bubble b) = Bubble (b { value = n })
 
-setOrDeleteBubble :: (Int -> Maybe Int) -> Bubble -> Maybe Bubble
-setOrDeleteBubble f (Bubble b) =
+setBubbles :: forall f. Functor f => (Int -> f Int) -> Bubble -> f Bubble
+setBubbles f (Bubble b) =
   (\v -> Bubble (b { value = v })) <$> (f b.value)
 
 changeValue :: Int -> Bubble -> Bubble
@@ -71,14 +73,14 @@ cubeBy cube sqr by plus =
   modifyBubble (\b -> let v = getValue b
                       in setValue (v*v*v*cube + v*v*sqr + v*by + plus) b)
 
-normSqrt :: Norm -> Int -> (Int -> Maybe Int)
-normSqrt Inf _ = Just <<< round <<< Math.sqrt <<< toNumber
-normSqrt (Padic p) steps = L.head <<< Roots.pSqrt p steps
+normSqrt :: Norm -> Int -> (Int -> List Int)
+normSqrt Inf _ = L.singleton <<< round <<< Math.sqrt <<< toNumber
+normSqrt (Padic p) steps = Roots.pSqrt p steps
 
-sqrtBubble :: Norm -> Int -> Bubble -> Maybe Bubble
+sqrtBubble :: Norm -> Int -> Bubble -> List Bubble
 sqrtBubble norm steps =
   let sqrt = normSqrt norm steps
-  in setOrDeleteBubble sqrt
+  in setBubbles sqrt
 
 decValue :: Bubble -> Bubble
 decValue = modifyBubble (\b -> setValue (getValue b - 1) b)

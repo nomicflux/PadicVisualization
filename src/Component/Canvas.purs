@@ -14,6 +14,8 @@ import Data.Array as A
 import Data.Array.ST (STArray)
 import Data.Array.ST as AST
 import Data.Int (round, toNumber, pow)
+import Data.List (List(..))
+import Data.List as L
 import Data.Map (Map)
 import Data.Map as M
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -44,7 +46,7 @@ data CoordType = Circular | PadicVector
 type Model = { maxInt :: Int
              , power :: Int
              , norm :: Norm
-             , bubbles :: Array (Maybe Bubble)
+             , bubbles :: Array (List Bubble)
              , time :: Maybe Tick
              , size :: Int
              , numIncs :: Int
@@ -76,8 +78,8 @@ type Input = { size :: Int
              , sqrt :: Boolean
              }
 
-mkBubbles :: Int -> Array (Maybe Bubble)
-mkBubbles maxInt = (Just <<< B.mkBubble) <$> (A.range 0 maxInt)
+mkBubbles :: Int -> Array (List Bubble)
+mkBubbles maxInt = (L.singleton <<< B.mkBubble) <$> (A.range 0 maxInt)
 
 initialModel :: Input -> Model
 initialModel input =
@@ -194,13 +196,21 @@ drawBubble :: Ca.Context2D ->
               (Bubble -> Coordinates) ->
               (Bubble -> String) ->
               Int ->
-              Maybe Bubble ->
+              Bubble ->
               Effect Unit
-drawBubble _ _ _ _ Nothing = pure unit
-drawBubble ctx coordGetter colorGetter radius (Just bubble) =
+drawBubble ctx coordGetter colorGetter radius bubble =
   let coords = coordGetter bubble
       color = colorGetter bubble
   in drawCircle ctx coords (toNumber radius) color
+
+drawBubbles :: Ca.Context2D ->
+              (Bubble -> Coordinates) ->
+              (Bubble -> String) ->
+              Int ->
+              List Bubble ->
+              Effect Unit
+drawBubbles ctx coordGetter colorGetter radius bubbles =
+  for_ bubbles (drawBubble ctx coordGetter colorGetter radius)
 
 canvasId :: String
 canvasId = "bubble-canvas"
@@ -255,15 +265,16 @@ type Inc = { addTo :: Int
            , sqrt :: Boolean
            }
 
-bubbleFn :: Norm -> Int -> Inc -> (Maybe Bubble) -> (Maybe Bubble)
+bubbleFn :: Norm -> Int -> Inc -> (List Bubble) -> (List Bubble)
 bubbleFn norm steps inc =
   if inc.sqrt
-  then \mb -> mb >>= (B.sqrtBubble norm steps <<< (B.cubeBy inc.cubeBy inc.sqrBy inc.multBy inc.addTo))
+  then \mb -> mb >>=
+              (B.sqrtBubble norm steps <<< (B.cubeBy inc.cubeBy inc.sqrBy inc.multBy inc.addTo))
   else map (B.cubeBy inc.cubeBy inc.sqrBy inc.multBy inc.addTo)
 
-incBubble :: forall h. Model -> Inc -> STArray h (Maybe Bubble) -> Int -> ST h Unit
+incBubble :: forall h. Model -> Inc -> STArray h (List Bubble) -> Int -> ST h Unit
 incBubble model inc bubbles idx = do
-  _ <- AST.modify idx (map (replaceBubble model.maxInt inc) <<< bubbleFn model.norm (model.power - 1) inc) bubbles
+  _ <- AST.modify idx (L.nub <<< map (replaceBubble model.maxInt inc) <<< bubbleFn model.norm (model.power - 1) inc) bubbles
   pure unit
 
 incAll :: Model -> Model
@@ -276,10 +287,10 @@ incAll model =
           , sqrt: model.sqrt
           }
 
-    changer :: forall h. STArray h (Maybe Bubble) -> Int -> ST h Unit
+    changer :: forall h. STArray h (List Bubble) -> Int -> ST h Unit
     changer = incBubble model inc
 
-    newBubblesST :: forall h. Array (Maybe Bubble) -> ST h (Array (Maybe Bubble))
+    newBubblesST :: forall h. Array (List Bubble) -> ST h (Array (List Bubble))
     newBubblesST bubbles = do
       bubblesST <- AST.thaw bubbles
       _ <- ST.for 0 (A.length bubbles) (changer bubblesST)
@@ -350,7 +361,7 @@ redraw model =
         dim <- Ca.getCanvasDimensions canvas
         Ca.clearRect ctx {x: 0.0, y: 0.0, width: dim.width, height: dim.height}
         Ca.setGlobalAlpha ctx alpha
-        for_ model.bubbles (drawBubble ctx coordGetter colorGetter model.radius)
+        for_ model.bubbles (drawBubbles ctx coordGetter colorGetter model.radius)
         pure unit
 
 redrawStep :: H.ComponentDSL Model Query Message Aff Unit
