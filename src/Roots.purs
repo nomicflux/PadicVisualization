@@ -45,7 +45,7 @@ pSqrt _ _ 0 = (0 : Nil)
 pSqrt p steps x =
     getRoot x >>=
     \y -> getRecip (2 * y) >>=
-    \df -> pure (go p 0 y df)
+    \df -> pure (go p 1 y df)
   where
     roots = modRoots p
     recips = modRecips p

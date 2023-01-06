@@ -5,7 +5,6 @@ import Prelude
 import Color as Co
 import Component.Animation (Tick, incTick, startTick)
 import Component.Animation as An
-import Component.Bubble (Bubble)
 import Component.Bubble as B
 import Control.Monad.Reader as Reader
 import Control.Monad.ST (ST)
@@ -14,14 +13,15 @@ import Data.Array as A
 import Data.Array.ST (STArray)
 import Data.Array.ST as AST
 import Data.Int (round, toNumber, pow)
-import Data.List (List(..))
+import Data.List (List)
 import Data.List as L
 import Data.Map (Map)
 import Data.Map as M
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Rational (Rational, fromInt)
 import Data.Rational as R
-import Data.Traversable (for_)
+import Data.Traversable (for_, sequence_)
+import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Effect.Aff (Aff)
 import Graphics.Canvas as Ca
@@ -31,7 +31,7 @@ import Halogen.HTML.Properties as HP
 import HalogenHelpers.Coordinates (Coordinates)
 import HalogenHelpers.Coordinates as C
 import Math as Math
-import Norm (Norm(..), getPrime, isPadic)
+import Norm (Norm(..), getPrime, isPadic, takeNorm)
 import PadicVector (baseCoordinates)
 import PadicVector as PV
 import PolarCoordinates (PolarCoordinates)
@@ -46,7 +46,7 @@ data CoordType = Circular | PadicVector
 type Model = { maxInt :: Int
              , power :: Int
              , norm :: Norm
-             , bubbles :: Array (List Bubble)
+             , bubbles :: Array (List Int)
              , time :: Maybe Tick
              , size :: Int
              , numIncs :: Int
@@ -78,8 +78,8 @@ type Input = { size :: Int
              , sqrt :: Boolean
              }
 
-mkBubbles :: Int -> Array (List Bubble)
-mkBubbles maxInt = (L.singleton <<< B.mkBubble) <$> (A.range 0 maxInt)
+mkBubbles :: Int -> Array (List Int)
+mkBubbles maxInt = L.singleton <$> (A.range 0 maxInt)
 
 initialModel :: Input -> Model
 initialModel input =
@@ -113,10 +113,10 @@ getR model value = value / fromInt maxValue
 getTheta :: Model -> Int -> Number
 getTheta model value = Math.pi * 2.0 * (toNumber value) / (toNumber model.maxInt)
 
-toPolar :: Model -> Bubble -> PolarCoordinates
-toPolar model bubble =
-  let r = getR model (B.getNormedValue model.norm bubble)
-      theta = getTheta model (B.getValue bubble)
+toPolar :: Model -> Int -> PolarCoordinates
+toPolar model n =
+  let r = getR model (takeNorm model.norm n)
+      theta = getTheta model n
   in {r: R.toNumber r, theta}
 
 normalizeCoords :: Model -> Coordinates -> Coordinates
@@ -128,8 +128,7 @@ normalizeCoords model coords =
 
 getCircleCoord :: Model -> Int -> Coordinates
 getCircleCoord model n =
-  let b = B.mkBubble n
-  in normalizeCoords model $ PC.polarToCartesian (toPolar model b)
+  normalizeCoords model $ PC.polarToCartesian (toPolar model n)
 
 getPadicCoord :: Model -> Int -> Coordinates
 getPadicCoord model n =
@@ -138,11 +137,11 @@ getPadicCoord model n =
 
 getCoordinates :: (Number -> Number -> Number) ->
                   Map Int Coordinates -> Number ->
-                  Bubble -> Coordinates
-getCoordinates interpolater cache size bubble =
-  let mold = B.getOldValue bubble >>= flip M.lookup cache
+                  Tuple Int Int -> Coordinates
+getCoordinates interpolater cache size (Tuple oldValue newValue) =
+  let mold = M.lookup oldValue cache
       old = fromMaybe (C.addOffset baseCoordinates {top: size / 2.0, left: size}) mold
-      new = fromMaybe baseCoordinates $ M.lookup (B.getValue bubble) cache
+      new = fromMaybe baseCoordinates $ M.lookup newValue cache
   in { x: interpolater new.x old.x
      , y: interpolater new.y old.y
      }
@@ -150,11 +149,9 @@ getCoordinates interpolater cache size bubble =
 getColor :: (Number -> Number -> Number) ->
             (Int -> Int) ->
             Map Int String ->
-            Bubble -> String
-getColor interpolater placer cache bubble =
-  let new = B.getValue bubble
-      old = fromMaybe new $ B.getOldValue bubble
-      interpolated = round $ interpolater (toNumber new) (toNumber old)
+            Tuple Int Int -> String
+getColor interpolater placer cache (Tuple oldValue newValue) =
+  let interpolated = round $ interpolater (toNumber newValue) (toNumber oldValue)
   in  fromMaybe "#000" $ M.lookup (placer interpolated) cache
 
 component :: H.Component HH.HTML Query Input Message Aff
@@ -192,11 +189,14 @@ drawCircle ctx coords r color = do
   Ca.stroke ctx
   Ca.closePath ctx
 
+distributeTuple :: (Tuple Int (List Int)) -> List (Tuple Int Int)
+distributeTuple (Tuple a bs) = (\b -> Tuple a b) <$> bs
+
 drawBubble :: Ca.Context2D ->
-              (Bubble -> Coordinates) ->
-              (Bubble -> String) ->
+              (Tuple Int Int -> Coordinates) ->
+              (Tuple Int Int -> String) ->
               Int ->
-              Bubble ->
+              (Tuple Int Int) ->
               Effect Unit
 drawBubble ctx coordGetter colorGetter radius bubble =
   let coords = coordGetter bubble
@@ -204,13 +204,13 @@ drawBubble ctx coordGetter colorGetter radius bubble =
   in drawCircle ctx coords (toNumber radius) color
 
 drawBubbles :: Ca.Context2D ->
-              (Bubble -> Coordinates) ->
-              (Bubble -> String) ->
+              (Tuple Int Int -> Coordinates) ->
+              (Tuple Int Int -> String) ->
               Int ->
-              List Bubble ->
+              (Tuple Int (List Int)) ->
               Effect Unit
 drawBubbles ctx coordGetter colorGetter radius bubbles =
-  for_ bubbles (drawBubble ctx coordGetter colorGetter radius)
+  for_ (distributeTuple bubbles) $ drawBubble ctx coordGetter colorGetter radius
 
 canvasId :: String
 canvasId = "bubble-canvas"
@@ -246,17 +246,14 @@ data Query a = ChangeMax Int (Unit -> a)
 
 data Message = Noop
 
-inRange :: Int -> Bubble -> Boolean
-inRange maxInt bubble =
-  let v = B.getValue bubble
-  in v <= maxInt && v >= 0
+inRange :: Int -> Int -> Boolean
+inRange maxInt v = v <= maxInt && v >= 0
 
-replaceBubble :: Int -> Inc -> Bubble -> Bubble
-replaceBubble maxInt inc bubble =
-  if inRange maxInt bubble
-  then bubble
-  else let new = B.getValue bubble `mod` (maxInt + 1)
-       in B.setValue new bubble
+replaceBubble :: Int -> Inc -> Int -> Int
+replaceBubble maxInt inc v =
+  if inRange maxInt v
+  then v
+  else v `mod` (maxInt + 1)
 
 type Inc = { addTo :: Int
            , multBy :: Int
@@ -265,17 +262,18 @@ type Inc = { addTo :: Int
            , sqrt :: Boolean
            }
 
-bubbleFn :: Norm -> Int -> Inc -> (List Bubble) -> (List Bubble)
+bubbleFn :: Norm -> Int -> Inc -> Int -> (List Int)
 bubbleFn norm steps inc =
   if inc.sqrt
-  then \mb -> mb >>=
-              (B.sqrtBubble norm steps <<< (B.cubeBy inc.cubeBy inc.sqrBy inc.multBy inc.addTo))
-  else map (B.cubeBy inc.cubeBy inc.sqrBy inc.multBy inc.addTo)
+  then B.sqrtBubble norm steps <<< (B.cubeBy inc.cubeBy inc.sqrBy inc.multBy inc.addTo)
+  else L.singleton <<< B.cubeBy inc.cubeBy inc.sqrBy inc.multBy inc.addTo
 
-incBubble :: forall h. Model -> Inc -> STArray h (List Bubble) -> Int -> ST h Unit
-incBubble model inc bubbles idx = do
-  _ <- AST.modify idx (L.nub <<< map (replaceBubble model.maxInt inc) <<< bubbleFn model.norm (model.power - 1) inc) bubbles
-  pure unit
+setFromIdx :: forall h a. STArray h (List a) -> Int -> (Int -> List a) -> ST h Unit
+setFromIdx array idx f = AST.modify idx (const (f idx)) array *> pure unit
+
+incBubble :: forall h. Model -> Inc -> STArray h (List Int) -> Int -> ST h Unit
+incBubble model inc bubbles idx =
+  setFromIdx bubbles idx  (map (replaceBubble model.maxInt inc) <<< bubbleFn model.norm model.power inc)
 
 incAll :: Model -> Model
 incAll model =
@@ -287,10 +285,10 @@ incAll model =
           , sqrt: model.sqrt
           }
 
-    changer :: forall h. STArray h (List Bubble) -> Int -> ST h Unit
+    changer :: forall h. STArray h (List Int) -> Int -> ST h Unit
     changer = incBubble model inc
 
-    newBubblesST :: forall h. Array (List Bubble) -> ST h (Array (List Bubble))
+    newBubblesST :: forall h. Array (List Int) -> ST h (Array (List Int))
     newBubblesST bubbles = do
       bubblesST <- AST.thaw bubbles
       _ <- ST.for 0 (A.length bubbles) (changer bubblesST)
@@ -361,7 +359,8 @@ redraw model =
         dim <- Ca.getCanvasDimensions canvas
         Ca.clearRect ctx {x: 0.0, y: 0.0, width: dim.width, height: dim.height}
         Ca.setGlobalAlpha ctx alpha
-        for_ model.bubbles (drawBubbles ctx coordGetter colorGetter model.radius)
+        sequence_ $
+          A.mapWithIndex (\idx vs -> drawBubbles ctx coordGetter colorGetter model.radius (Tuple idx vs)) model.bubbles
         pure unit
 
 redrawStep :: H.ComponentDSL Model Query Message Aff Unit
