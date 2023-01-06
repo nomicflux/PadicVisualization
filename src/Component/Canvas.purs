@@ -62,6 +62,7 @@ type Model = { maxInt :: Int
              , quadCoeff :: Int
              , cubeCoeff :: Int
              , sqrt :: Boolean
+             , cbrt :: Boolean
              }
 
 type Input = { size :: Int
@@ -76,6 +77,7 @@ type Input = { size :: Int
              , quadCoeff :: Int
              , cubeCoeff :: Int
              , sqrt :: Boolean
+             , cbrt :: Boolean
              }
 
 mkBubbles :: Int -> Array (List Int)
@@ -103,6 +105,7 @@ initialModel input =
      , quadCoeff: input.quadCoeff
      , cubeCoeff: input.cubeCoeff
      , sqrt: input.sqrt
+     , cbrt: input.cbrt
      }
 
 getR :: Model -> Rational -> Rational
@@ -237,6 +240,7 @@ data Query a = ChangeMax Int (Unit -> a)
              | ChangeQuadBy Int (Unit -> a)
              | ChangeCubeBy Int (Unit -> a)
              | ChangeSqrt Boolean (Unit -> a)
+             | ChangeCbrt Boolean (Unit -> a)
              | ToggleRepr (Unit -> a)
              | ToggleAnimation (Unit -> a)
              | IncValues a
@@ -260,20 +264,23 @@ type Inc = { addTo :: Int
            , sqrBy :: Int
            , cubeBy :: Int
            , sqrt :: Boolean
+           , cbrt :: Boolean
            }
 
 bubbleFn :: Norm -> Int -> Inc -> Int -> (List Int)
 bubbleFn norm steps inc =
-  if inc.sqrt
-  then B.sqrtBubble norm steps <<< (B.cubeBy inc.cubeBy inc.sqrBy inc.multBy inc.addTo)
-  else L.singleton <<< B.cubeBy inc.cubeBy inc.sqrBy inc.multBy inc.addTo
+  let base = L.singleton <<< B.cubeBy inc.cubeBy inc.sqrBy inc.multBy inc.addTo
+      sqrted = if inc.sqrt then base >=> B.normSqrt norm steps else base
+      cbrted = if inc.cbrt then sqrted >=> B.normCbrt norm steps else sqrted
+  in cbrted
 
 setFromIdx :: forall h a. STArray h (List a) -> Int -> (Int -> List a) -> ST h Unit
 setFromIdx array idx f = AST.modify idx (const (f idx)) array *> pure unit
 
 incBubble :: forall h. Model -> Inc -> STArray h (List Int) -> Int -> ST h Unit
 incBubble model inc bubbles idx =
-  setFromIdx bubbles idx  (map (replaceBubble model.maxInt inc) <<< bubbleFn model.norm model.power inc)
+  setFromIdx bubbles idx $
+    map (replaceBubble model.maxInt inc) <<< bubbleFn model.norm model.power inc
 
 incAll :: Model -> Model
 incAll model =
@@ -283,6 +290,7 @@ incAll model =
           , sqrBy: model.quadCoeff
           , cubeBy: model.cubeCoeff
           , sqrt: model.sqrt
+          , cbrt: model.cbrt
           }
 
     changer :: forall h. STArray h (List Int) -> Int -> ST h Unit
@@ -387,6 +395,8 @@ eval (ChangeCubeBy cubeCoeff reply) =
   H.modify_ (_ { cubeCoeff = cubeCoeff } ) *> reinitCache (reply unit)
 eval (ChangeSqrt b reply) =
   H.modify_ (_ { sqrt = b }) *> reinitCache (reply unit)
+eval (ChangeCbrt b reply) =
+  H.modify_ (_ { cbrt = b }) *> reinitCache (reply unit)
 eval (ChangeScale scale reply) =
   H.modify_ (_ { scale = scale } ) *> reinitCache (reply unit)
 eval (ChangeRadius radius reply) =

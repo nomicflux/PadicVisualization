@@ -16,7 +16,13 @@ joinLists ls rs = L.concat (ls:rs:Nil)
 modRoots :: Int -> Map Int (List Int)
 modRoots p =
   let ints = L.range 0 (p - 1)
-      squared = L.zipWith (\x y -> Tuple ((x * y) `mod` p) (L.singleton x)) ints ints
+      squared = map (\x -> Tuple ((x * x) `mod` p) (L.singleton x)) ints
+  in M.fromFoldableWith joinLists squared
+
+modCubeRoots :: Int -> Map Int (List Int)
+modCubeRoots p =
+  let ints = L.range 0 (p - 1)
+      squared = map (\x -> Tuple ((x * x * x) `mod` p) (L.singleton x)) ints
   in M.fromFoldableWith joinLists squared
 
 recipMod :: Int -> Int -> Maybe Int
@@ -57,6 +63,30 @@ pSqrt p steps x =
     go pk step n df
        | step >= steps = n
        | otherwise = let f = (n*n - x) `div` pk
+                         d = (f * (p - df)) `mod` p
+                     in go
+                        (p * pk)
+                        (step + 1)
+                        (n + d * pk)
+                        df
+
+pCbrt :: Int -> Int -> Int -> List Int
+pCbrt _ _ 0 = (0 : Nil)
+pCbrt p steps x =
+    getRoot x >>=
+    \y -> getRecip (3 * y * y) >>=
+    \df -> pure (go p 1 y df)
+  where
+    roots = modCubeRoots p
+    recips = modRecips p
+    getRoot :: Int -> List Int
+    getRoot = \n -> lookupOr (n `mod` p) Nil roots
+    getRecip :: Int -> List Int
+    getRecip = \n -> L.fromFoldable (lookupOr (n `mod` p) Nothing recips)
+    go :: Int -> Int -> Int -> Int -> Int
+    go pk step n df
+       | step >= steps = n
+       | otherwise = let f = (n*n*n - x) `div` pk
                          d = (f * (p - df)) `mod` p
                      in go
                         (p * pk)

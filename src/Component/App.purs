@@ -28,6 +28,7 @@ baseInput = { size: 1024
             , quadCoeff: 0
             , cubeCoeff: 0
             , sqrt: false
+            , cbrt: false
             }
 
 data Query a = SetNorm Int a
@@ -40,6 +41,7 @@ data Query a = SetNorm Int a
              | SetQuad Int a
              | SetCube Int a
              | ChangeSqrt Boolean a
+             | ChangeCbrt Boolean a
              | ToggleRepr a
              | ToggleAnimation a
              | Reset a
@@ -122,7 +124,8 @@ render _ = HH.div [ HP.class_ $ HH.ClassName "pure-g" ]
       , mkNumInput "Linear Coefficient" (show baseInput.multBy) (Just "Set linear component") SetMult
       , mkNumInput "Quad Coefficient" (show baseInput.quadCoeff) (Just "Set quadratic component") SetQuad
       , mkNumInput "Cubic Coefficient" (show baseInput.cubeCoeff) (Just "Set cubic component") SetCube
-      , mkCheckbox "Square Root?" (Just "Take square root of cubic function") ChangeSqrt
+      , mkCheckbox "Square Root?" (Just "Take square root of the above") ChangeSqrt
+      , mkCheckbox "Cube Root?" (Just "Take cube root of the above") ChangeCbrt
       ]
 
     renderMain :: H.ParentHTML Query CC.Query CC.Slot Aff
@@ -143,6 +146,7 @@ eval (SetMult y next) = passAlong (CC.ChangeMultBy y) *> pure next
 eval (SetQuad q next) = passAlong (CC.ChangeQuadBy q) *> pure next
 eval (SetCube c next) = passAlong (CC.ChangeCubeBy c) *> pure next
 eval (ChangeSqrt b next) = passAlong (CC.ChangeSqrt b) *> pure next
+eval (ChangeCbrt b next) = passAlong (CC.ChangeCbrt b) *> pure next
 eval (ToggleRepr next) = passAlong CC.ToggleRepr *> pure next
 eval (ToggleAnimation next) = passAlong CC.ToggleAnimation *> pure next
 eval (Reset next) = passAlong CC.Reset *> pure next

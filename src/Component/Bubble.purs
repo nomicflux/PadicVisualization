@@ -5,8 +5,6 @@ import Prelude
 import Data.Int (round, toNumber)
 import Data.List as L
 import Data.List (List(..))
-import Data.Maybe (Maybe(..))
-import Data.Rational (Rational)
 import Math as Math
 import Norm (Norm(..), takeNorm)
 import Roots as Roots
@@ -18,5 +16,6 @@ normSqrt :: Norm -> Int -> (Int -> List Int)
 normSqrt Inf _ = L.singleton <<< round <<< Math.sqrt <<< toNumber
 normSqrt (Padic p) steps = Roots.pSqrt p steps
 
-sqrtBubble :: Norm -> Int -> Int -> List Int
-sqrtBubble norm steps = normSqrt norm steps
+normCbrt :: Norm -> Int -> (Int -> List Int)
+normCbrt Inf _ = L.singleton <<< round <<< flip Math.pow (1.0 / 3.0) <<< toNumber
+normCbrt (Padic p) steps = Roots.pCbrt p steps
