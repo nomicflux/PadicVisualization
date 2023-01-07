@@ -243,7 +243,6 @@ data Query a = ChangeMax Int (Unit -> a)
              | ChangeCbrt Boolean (Unit -> a)
              | ToggleRepr (Unit -> a)
              | ToggleAnimation (Unit -> a)
-             | IncValues a
              | InitCaches a
              | Reset (Unit -> a)
              | MoveTick (Unit -> a)
@@ -326,6 +325,7 @@ reinitCache next =  do
                , colorCache = colorCache
                })
   H.liftEffect $ redraw model
+  H.modify_ incAll
   pure next
 
 toggleAnimation :: Model -> Model
@@ -403,10 +403,6 @@ eval (ChangeRadius radius reply) =
   H.modify_ (_ { radius = radius } ) *> pure (reply unit)
 eval (ToggleRepr reply) = H.modify_ toggleRepr *> reinitCache (reply unit)
 eval (ToggleAnimation reply) = H.modify_ toggleAnimation *> reinitCache (reply unit)
-eval (IncValues next) = do
-  model <- H.get
-  H.modify_ incAll
-  pure next
 eval (MoveTick reply) = do
   model <- H.get
   case model.animate of
@@ -423,7 +419,7 @@ eval (MoveTick reply) = do
         Nothing -> do
           H.modify_ (_ { time = Just startTick })
           redrawStep
-          eval (IncValues (reply unit))
+          pure (reply unit)
 eval (InitCaches next) = reinitCache next
 eval (Reset reply) = do
   model <- H.get

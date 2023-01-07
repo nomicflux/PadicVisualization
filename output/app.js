@@ -8591,15 +8591,6 @@ var PS = {};
       };
       return ToggleAnimation;
   })();
-  var IncValues = (function () {
-      function IncValues(value0) {
-          this.value0 = value0;
-      };
-      IncValues.create = function (value0) {
-          return new IncValues(value0);
-      };
-      return IncValues;
-  })();
   var InitCaches = (function () {
       function InitCaches(value0) {
           this.value0 = value0;
@@ -8799,8 +8790,8 @@ var PS = {};
   var replaceBubble = function (maxInt) {
       return function (inc) {
           return function (v) {
-              var $40 = inRange(maxInt)(v);
-              if ($40) {
+              var $39 = inRange(maxInt)(v);
+              if ($39) {
                   return v;
               };
               return Data_EuclideanRing.mod(Data_EuclideanRing.euclideanRingInt)(v)(maxInt + 1 | 0);
@@ -8818,8 +8809,8 @@ var PS = {};
   var getR = function (model) {
       return function (value) {
           var maxValue = (function () {
-              var $41 = Norm.isPadic(model.norm);
-              if ($41) {
+              var $40 = Norm.isPadic(model.norm);
+              if ($40) {
                   return 1;
               };
               return model.maxInt;
@@ -9009,75 +9000,31 @@ var PS = {};
   };
   var redrawStep = Control_Bind.bind(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.get(Halogen_Query_HalogenM.monadStateHalogenM))(function (v) {
       return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
-          var $69 = {};
-          for (var $70 in v1) {
-              if ({}.hasOwnProperty.call(v1, $70)) {
-                  $69[$70] = v1[$70];
+          var $68 = {};
+          for (var $69 in v1) {
+              if ({}.hasOwnProperty.call(v1, $69)) {
+                  $68[$69] = v1[$69];
               };
           };
-          $69.animate = false;
-          return $69;
+          $68.animate = false;
+          return $68;
       }))(function () {
           return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Effect_Class.liftEffect(Halogen_Query_HalogenM.monadEffectHalogenM(Effect_Aff.monadEffectAff))(redraw(v)))(function () {
               return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
-                  var $72 = {};
-                  for (var $73 in v1) {
-                      if ({}.hasOwnProperty.call(v1, $73)) {
-                          $72[$73] = v1[$73];
+                  var $71 = {};
+                  for (var $72 in v1) {
+                      if ({}.hasOwnProperty.call(v1, $72)) {
+                          $71[$72] = v1[$72];
                       };
                   };
-                  $72.animate = true;
-                  return $72;
+                  $71.animate = true;
+                  return $71;
               }))(function () {
                   return Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(Data_Unit.unit);
               });
           });
       });
   });
-  var reinitCache = function (next) {
-      return Control_Bind.bind(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.get(Halogen_Query_HalogenM.monadStateHalogenM))(function (v) {
-          return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(regenBubbles))(function () {
-              var ints = Data_Array.range(0)(v.maxInt);
-              var colorCache = Data_Foldable.foldl(Data_Foldable.foldableArray)(function (acc) {
-                  return function (x) {
-                      return Data_Map_Internal.insert(Data_Ord.ordInt)(x)(mkColor(v)(x))(acc);
-                  };
-              })(Data_Map_Internal.empty)(ints);
-              var cache = (function () {
-                  if (v.coordType instanceof Circular) {
-                      return Data_Foldable.foldl(Data_Foldable.foldableArray)(function (acc) {
-                          return function (x) {
-                              return Data_Map_Internal.insert(Data_Ord.ordInt)(x)(getCircleCoord(v)(x))(acc);
-                          };
-                      })(Data_Map_Internal.empty)(ints);
-                  };
-                  if (v.coordType instanceof PadicVector) {
-                      return Data_Foldable.foldl(Data_Foldable.foldableArray)(function (acc) {
-                          return function (x) {
-                              return Data_Map_Internal.insert(Data_Ord.ordInt)(x)(getPadicCoord(v)(x))(acc);
-                          };
-                      })(Data_Map_Internal.empty)(ints);
-                  };
-                  throw new Error("Failed pattern match at Component.Canvas (line 318, column 15 - line 322, column 85): " + [ v.coordType.constructor.name ]);
-              })();
-              return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
-                  var $77 = {};
-                  for (var $78 in v1) {
-                      if ({}.hasOwnProperty.call(v1, $78)) {
-                          $77[$78] = v1[$78];
-                      };
-                  };
-                  $77.cache = cache;
-                  $77.colorCache = colorCache;
-                  return $77;
-              }))(function () {
-                  return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Effect_Class.liftEffect(Halogen_Query_HalogenM.monadEffectHalogenM(Effect_Aff.monadEffectAff))(redraw(v)))(function () {
-                      return Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(next);
-                  });
-              });
-          });
-      });
-  };
   var render = function (model) {
       var size = getSize(model);
       return Halogen_HTML_Elements.canvas([ Halogen_HTML_Properties.width(size), Halogen_HTML_Properties.height(size), Halogen_HTML_Properties.id_(canvasId) ]);
@@ -9085,8 +9032,8 @@ var PS = {};
   var bubbleFn = function (norm) {
       return function (steps) {
           return function (inc) {
-              var base = function ($154) {
-                  return Data_List.singleton(Component_Bubble.cubeBy(inc.cubeBy)(inc.sqrBy)(inc.multBy)(inc.addTo)($154));
+              var base = function ($151) {
+                  return Data_List.singleton(Component_Bubble.cubeBy(inc.cubeBy)(inc.sqrBy)(inc.multBy)(inc.addTo)($151));
               };
               var sqrted = (function () {
                   if (inc.sqrt) {
@@ -9108,8 +9055,8 @@ var PS = {};
       return function (inc) {
           return function (bubbles) {
               return function (idx) {
-                  return setFromIdx(bubbles)(idx)(function ($155) {
-                      return Data_Functor.map(Data_List_Types.functorList)(replaceBubble(model.maxInt)(inc))(bubbleFn(model.norm)(model.power)(inc)($155));
+                  return setFromIdx(bubbles)(idx)(function ($152) {
+                      return Data_Functor.map(Data_List_Types.functorList)(replaceBubble(model.maxInt)(inc))(bubbleFn(model.norm)(model.power)(inc)($152));
                   });
               };
           };
@@ -9156,128 +9103,174 @@ var PS = {};
           cbrt: model.cbrt
       };
   };
+  var reinitCache = function (next) {
+      return Control_Bind.bind(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.get(Halogen_Query_HalogenM.monadStateHalogenM))(function (v) {
+          return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(regenBubbles))(function () {
+              var ints = Data_Array.range(0)(v.maxInt);
+              var colorCache = Data_Foldable.foldl(Data_Foldable.foldableArray)(function (acc) {
+                  return function (x) {
+                      return Data_Map_Internal.insert(Data_Ord.ordInt)(x)(mkColor(v)(x))(acc);
+                  };
+              })(Data_Map_Internal.empty)(ints);
+              var cache = (function () {
+                  if (v.coordType instanceof Circular) {
+                      return Data_Foldable.foldl(Data_Foldable.foldableArray)(function (acc) {
+                          return function (x) {
+                              return Data_Map_Internal.insert(Data_Ord.ordInt)(x)(getCircleCoord(v)(x))(acc);
+                          };
+                      })(Data_Map_Internal.empty)(ints);
+                  };
+                  if (v.coordType instanceof PadicVector) {
+                      return Data_Foldable.foldl(Data_Foldable.foldableArray)(function (acc) {
+                          return function (x) {
+                              return Data_Map_Internal.insert(Data_Ord.ordInt)(x)(getPadicCoord(v)(x))(acc);
+                          };
+                      })(Data_Map_Internal.empty)(ints);
+                  };
+                  throw new Error("Failed pattern match at Component.Canvas (line 317, column 15 - line 321, column 85): " + [ v.coordType.constructor.name ]);
+              })();
+              return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
+                  var $79 = {};
+                  for (var $80 in v1) {
+                      if ({}.hasOwnProperty.call(v1, $80)) {
+                          $79[$80] = v1[$80];
+                      };
+                  };
+                  $79.cache = cache;
+                  $79.colorCache = colorCache;
+                  return $79;
+              }))(function () {
+                  return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Effect_Class.liftEffect(Halogen_Query_HalogenM.monadEffectHalogenM(Effect_Aff.monadEffectAff))(redraw(v)))(function () {
+                      return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(incAll))(function () {
+                          return Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(next);
+                      });
+                  });
+              });
+          });
+      });
+  };
   var $$eval = function (v) {
       if (v instanceof ChangeMax) {
           return Control_Apply.applySecond(Halogen_Query_HalogenM.applyHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(changeMax(v.value0)))(reinitCache(v.value1(Data_Unit.unit)));
       };
       if (v instanceof ChangeNorm) {
           return Control_Apply.applySecond(Halogen_Query_HalogenM.applyHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
-              var $86 = {};
-              for (var $87 in v1) {
-                  if ({}.hasOwnProperty.call(v1, $87)) {
-                      $86[$87] = v1[$87];
+              var $85 = {};
+              for (var $86 in v1) {
+                  if ({}.hasOwnProperty.call(v1, $86)) {
+                      $85[$86] = v1[$86];
                   };
               };
-              $86.norm = v.value0;
-              return $86;
+              $85.norm = v.value0;
+              return $85;
           }))(reinitCache(v.value1(Data_Unit.unit)));
       };
       if (v instanceof ChangeTick) {
           return Control_Apply.applySecond(Halogen_Query_HalogenM.applyHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
-              var $91 = {};
-              for (var $92 in v1) {
-                  if ({}.hasOwnProperty.call(v1, $92)) {
-                      $91[$92] = v1[$92];
+              var $90 = {};
+              for (var $91 in v1) {
+                  if ({}.hasOwnProperty.call(v1, $91)) {
+                      $90[$91] = v1[$91];
                   };
               };
-              $91.maxTick = v.value0;
-              return $91;
+              $90.maxTick = v.value0;
+              return $90;
           }))(Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(v.value1(Data_Unit.unit)));
       };
       if (v instanceof ChangeAddTo) {
           return Control_Apply.applySecond(Halogen_Query_HalogenM.applyHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
-              var $96 = {};
-              for (var $97 in v1) {
-                  if ({}.hasOwnProperty.call(v1, $97)) {
-                      $96[$97] = v1[$97];
+              var $95 = {};
+              for (var $96 in v1) {
+                  if ({}.hasOwnProperty.call(v1, $96)) {
+                      $95[$96] = v1[$96];
                   };
               };
-              $96.addTo = v.value0;
-              return $96;
+              $95.addTo = v.value0;
+              return $95;
           }))(reinitCache(v.value1(Data_Unit.unit)));
       };
       if (v instanceof ChangeMultBy) {
           return Control_Apply.applySecond(Halogen_Query_HalogenM.applyHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
-              var $101 = {};
-              for (var $102 in v1) {
-                  if ({}.hasOwnProperty.call(v1, $102)) {
-                      $101[$102] = v1[$102];
+              var $100 = {};
+              for (var $101 in v1) {
+                  if ({}.hasOwnProperty.call(v1, $101)) {
+                      $100[$101] = v1[$101];
                   };
               };
-              $101.multBy = v.value0;
-              return $101;
+              $100.multBy = v.value0;
+              return $100;
           }))(reinitCache(v.value1(Data_Unit.unit)));
       };
       if (v instanceof ChangeQuadBy) {
           return Control_Apply.applySecond(Halogen_Query_HalogenM.applyHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
-              var $106 = {};
-              for (var $107 in v1) {
-                  if ({}.hasOwnProperty.call(v1, $107)) {
-                      $106[$107] = v1[$107];
+              var $105 = {};
+              for (var $106 in v1) {
+                  if ({}.hasOwnProperty.call(v1, $106)) {
+                      $105[$106] = v1[$106];
                   };
               };
-              $106.quadCoeff = v.value0;
-              return $106;
+              $105.quadCoeff = v.value0;
+              return $105;
           }))(reinitCache(v.value1(Data_Unit.unit)));
       };
       if (v instanceof ChangeCubeBy) {
           return Control_Apply.applySecond(Halogen_Query_HalogenM.applyHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
-              var $111 = {};
-              for (var $112 in v1) {
-                  if ({}.hasOwnProperty.call(v1, $112)) {
-                      $111[$112] = v1[$112];
+              var $110 = {};
+              for (var $111 in v1) {
+                  if ({}.hasOwnProperty.call(v1, $111)) {
+                      $110[$111] = v1[$111];
                   };
               };
-              $111.cubeCoeff = v.value0;
-              return $111;
+              $110.cubeCoeff = v.value0;
+              return $110;
           }))(reinitCache(v.value1(Data_Unit.unit)));
       };
       if (v instanceof ChangeSqrt) {
           return Control_Apply.applySecond(Halogen_Query_HalogenM.applyHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
-              var $116 = {};
-              for (var $117 in v1) {
-                  if ({}.hasOwnProperty.call(v1, $117)) {
-                      $116[$117] = v1[$117];
+              var $115 = {};
+              for (var $116 in v1) {
+                  if ({}.hasOwnProperty.call(v1, $116)) {
+                      $115[$116] = v1[$116];
                   };
               };
-              $116.sqrt = v.value0;
-              return $116;
+              $115.sqrt = v.value0;
+              return $115;
           }))(reinitCache(v.value1(Data_Unit.unit)));
       };
       if (v instanceof ChangeCbrt) {
           return Control_Apply.applySecond(Halogen_Query_HalogenM.applyHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
-              var $121 = {};
-              for (var $122 in v1) {
-                  if ({}.hasOwnProperty.call(v1, $122)) {
-                      $121[$122] = v1[$122];
+              var $120 = {};
+              for (var $121 in v1) {
+                  if ({}.hasOwnProperty.call(v1, $121)) {
+                      $120[$121] = v1[$121];
                   };
               };
-              $121.cbrt = v.value0;
-              return $121;
+              $120.cbrt = v.value0;
+              return $120;
           }))(reinitCache(v.value1(Data_Unit.unit)));
       };
       if (v instanceof ChangeScale) {
           return Control_Apply.applySecond(Halogen_Query_HalogenM.applyHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
-              var $126 = {};
-              for (var $127 in v1) {
-                  if ({}.hasOwnProperty.call(v1, $127)) {
-                      $126[$127] = v1[$127];
+              var $125 = {};
+              for (var $126 in v1) {
+                  if ({}.hasOwnProperty.call(v1, $126)) {
+                      $125[$126] = v1[$126];
                   };
               };
-              $126.scale = v.value0;
-              return $126;
+              $125.scale = v.value0;
+              return $125;
           }))(reinitCache(v.value1(Data_Unit.unit)));
       };
       if (v instanceof ChangeRadius) {
           return Control_Apply.applySecond(Halogen_Query_HalogenM.applyHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v1) {
-              var $131 = {};
-              for (var $132 in v1) {
-                  if ({}.hasOwnProperty.call(v1, $132)) {
-                      $131[$132] = v1[$132];
+              var $130 = {};
+              for (var $131 in v1) {
+                  if ({}.hasOwnProperty.call(v1, $131)) {
+                      $130[$131] = v1[$131];
                   };
               };
-              $131.radius = v.value0;
-              return $131;
+              $130.radius = v.value0;
+              return $130;
           }))(Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(v.value1(Data_Unit.unit)));
       };
       if (v instanceof ToggleRepr) {
@@ -9285,13 +9278,6 @@ var PS = {};
       };
       if (v instanceof ToggleAnimation) {
           return Control_Apply.applySecond(Halogen_Query_HalogenM.applyHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(toggleAnimation))(reinitCache(v.value0(Data_Unit.unit)));
-      };
-      if (v instanceof IncValues) {
-          return Control_Bind.bind(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.get(Halogen_Query_HalogenM.monadStateHalogenM))(function (v1) {
-              return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(incAll))(function () {
-                  return Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(v.value0);
-              });
-          });
       };
       if (v instanceof MoveTick) {
           return Control_Bind.bind(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.get(Halogen_Query_HalogenM.monadStateHalogenM))(function (v1) {
@@ -9306,14 +9292,14 @@ var PS = {};
                   });
                   if (newTick instanceof Data_Maybe.Just) {
                       return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v2) {
-                          var $143 = {};
-                          for (var $144 in v2) {
-                              if ({}.hasOwnProperty.call(v2, $144)) {
-                                  $143[$144] = v2[$144];
+                          var $140 = {};
+                          for (var $141 in v2) {
+                              if ({}.hasOwnProperty.call(v2, $141)) {
+                                  $140[$141] = v2[$141];
                               };
                           };
-                          $143.time = newTick;
-                          return $143;
+                          $140.time = newTick;
+                          return $140;
                       }))(function () {
                           return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(redrawStep)(function () {
                               return Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(v.value0(Data_Unit.unit));
@@ -9322,23 +9308,23 @@ var PS = {};
                   };
                   if (newTick instanceof Data_Maybe.Nothing) {
                       return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(Control_Monad_State_Class.modify_(Halogen_Query_HalogenM.monadStateHalogenM)(function (v2) {
-                          var $147 = {};
-                          for (var $148 in v2) {
-                              if ({}.hasOwnProperty.call(v2, $148)) {
-                                  $147[$148] = v2[$148];
+                          var $144 = {};
+                          for (var $145 in v2) {
+                              if ({}.hasOwnProperty.call(v2, $145)) {
+                                  $144[$145] = v2[$145];
                               };
                           };
-                          $147.time = new Data_Maybe.Just(Component_Animation.startTick);
-                          return $147;
+                          $144.time = new Data_Maybe.Just(Component_Animation.startTick);
+                          return $144;
                       }))(function () {
                           return Control_Bind.discard(Control_Bind.discardUnit)(Halogen_Query_HalogenM.bindHalogenM)(redrawStep)(function () {
-                              return $$eval(new IncValues(v.value0(Data_Unit.unit)));
+                              return Control_Applicative.pure(Halogen_Query_HalogenM.applicativeHalogenM)(v.value0(Data_Unit.unit));
                           });
                       });
                   };
-                  throw new Error("Failed pattern match at Component.Canvas (line 418, column 7 - line 426, column 40): " + [ newTick.constructor.name ]);
+                  throw new Error("Failed pattern match at Component.Canvas (line 414, column 7 - line 422, column 28): " + [ newTick.constructor.name ]);
               };
-              throw new Error("Failed pattern match at Component.Canvas (line 412, column 3 - line 426, column 40): " + [ v1.animate.constructor.name ]);
+              throw new Error("Failed pattern match at Component.Canvas (line 408, column 3 - line 422, column 28): " + [ v1.animate.constructor.name ]);
           });
       };
       if (v instanceof InitCaches) {
@@ -9398,7 +9384,6 @@ var PS = {};
   exports["ChangeCbrt"] = ChangeCbrt;
   exports["ToggleRepr"] = ToggleRepr;
   exports["ToggleAnimation"] = ToggleAnimation;
-  exports["IncValues"] = IncValues;
   exports["InitCaches"] = InitCaches;
   exports["Reset"] = Reset;
   exports["MoveTick"] = MoveTick;
