@@ -44,6 +44,7 @@ data Query a = SetNorm Int a
              | ChangeCbrt Boolean a
              | ToggleRepr a
              | ToggleAnimation a
+             | ToggleLines a
              | Reset a
              | Tick a
              | HandleMessage CC.Message a
@@ -114,6 +115,7 @@ render _ = HH.div [ HP.class_ $ HH.ClassName "pure-g" ]
       HH.div [ HP.class_ $ HH.ClassName "pure-u-1-4 sidebar" ]
       [ mkButton "Toggle Representation" "primary" (Just "Between fractal given by the p-adic representation, or circles given by the p-adic norm") ToggleRepr
       , mkButton "Toggle Animation" "warning" (Just "Turn animation on and off") ToggleAnimation
+      , mkButton "Toggle Lines" "secondary" (Just "Turn lines on and off") ToggleLines
       , mkButton "Reset" "error" (Just "Reset animation") Reset
       , mkNumInput "_-adic Norm" (show $ fromMaybe 0 (getPrime baseInput.norm)) (Just "<= 1 yields normal absolute value; 2 and above use p-adic norm") SetNorm
       , mkNumInput "# of Frames" (show baseInput.maxTick) (Just "Frames between each position; controls speed of animation") SetTick
@@ -148,6 +150,7 @@ eval (SetCube c next) = passAlong (CC.ChangeCubeBy c) *> pure next
 eval (ChangeSqrt b next) = passAlong (CC.ChangeSqrt b) *> pure next
 eval (ChangeCbrt b next) = passAlong (CC.ChangeCbrt b) *> pure next
 eval (ToggleRepr next) = passAlong CC.ToggleRepr *> pure next
+eval (ToggleLines next) = passAlong CC.ToggleLines *> pure next
 eval (ToggleAnimation next) = passAlong CC.ToggleAnimation *> pure next
 eval (Reset next) = passAlong CC.Reset *> pure next
 eval (Tick next) = passAlong CC.MoveTick *> pure next

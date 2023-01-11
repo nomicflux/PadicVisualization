@@ -41,11 +41,11 @@ interpolate f t = do
 
 sinInterpolate :: forall m. MonadReader Int m =>
                   Maybe Tick -> m (Number -> Number -> Number)
-sinInterpolate = interpolate (Math.sin <<< (\x -> Math.pi / 2.0 * x))
+sinInterpolate = interpolate (flip Math.pow 2.0 <<< Math.sin <<< (\x -> Math.pi * x - Math.pi / 4.0))
 
 cosInterpolate :: forall m. MonadReader Int m =>
                   Maybe Tick -> m (Number -> Number -> Number)
-cosInterpolate = interpolate ((1.0 - _) <<< Math.cos <<< (\x -> Math.pi / 2.0 * x))
+cosInterpolate = interpolate ((1.0 - _) <<< Math.cos <<< (\x -> Math.pi * x))
 
 cubicInterpolate :: forall m. MonadReader Int m =>
                     Maybe Tick -> m (Number -> Number -> Number)

@@ -55,6 +55,7 @@ type Model = { maxInt :: Int
              , colorCache :: Map Int String
              , maxTick :: Int
              , animate :: Boolean
+             , lines :: Boolean
              , scale :: Int
              , radius :: Int
              , addTo :: Int
@@ -98,6 +99,7 @@ initialModel input =
      , colorCache: M.empty
      , maxTick: input.maxTick
      , animate: true
+     , lines: false
      , scale: input.scale
      , radius: input.radius
      , addTo: input.addTo
@@ -192,28 +194,45 @@ drawCircle ctx coords r color = do
   Ca.stroke ctx
   Ca.closePath ctx
 
+drawLine :: Ca.Context2D -> Coordinates -> Coordinates -> Number -> String -> Effect Unit
+drawLine ctx start end r color = do
+  Ca.beginPath ctx
+  Ca.moveTo ctx start.x start.y
+  Ca.setStrokeStyle ctx color
+  Ca.setLineWidth ctx r
+  Ca.lineTo ctx end.x end.y
+  Ca.stroke ctx
+  Ca.closePath ctx
+
 distributeTuple :: (Tuple Int (List Int)) -> List (Tuple Int Int)
 distributeTuple (Tuple a bs) = (\b -> Tuple a b) <$> bs
 
 drawBubble :: Ca.Context2D ->
+              Model ->
+              (Tuple Int Int -> Coordinates) ->
               (Tuple Int Int -> Coordinates) ->
               (Tuple Int Int -> String) ->
               Int ->
               (Tuple Int Int) ->
               Effect Unit
-drawBubble ctx coordGetter colorGetter radius bubble =
+drawBubble ctx model oldCoordGetter coordGetter colorGetter radius bubble =
   let coords = coordGetter bubble
+      startCoords = oldCoordGetter bubble
       color = colorGetter bubble
-  in drawCircle ctx coords (toNumber radius) color
+  in drawCircle ctx coords (toNumber radius) color *>
+     if model.lines then drawLine ctx startCoords coords (toNumber radius) color
+                    else pure unit
 
 drawBubbles :: Ca.Context2D ->
+               Model ->
+              (Tuple Int Int -> Coordinates) ->
               (Tuple Int Int -> Coordinates) ->
               (Tuple Int Int -> String) ->
               Int ->
               (Tuple Int (List Int)) ->
               Effect Unit
-drawBubbles ctx coordGetter colorGetter radius bubbles =
-  for_ (distributeTuple bubbles) $ drawBubble ctx coordGetter colorGetter radius
+drawBubbles ctx model oldCoordGetter coordGetter colorGetter radius bubbles =
+  for_ (distributeTuple bubbles) $ drawBubble ctx model oldCoordGetter coordGetter colorGetter radius
 
 canvasId :: String
 canvasId = "bubble-canvas"
@@ -242,6 +261,7 @@ data Query a = ChangeMax Int (Unit -> a)
              | ChangeSqrt Boolean (Unit -> a)
              | ChangeCbrt Boolean (Unit -> a)
              | ToggleRepr (Unit -> a)
+             | ToggleLines (Unit -> a)
              | ToggleAnimation (Unit -> a)
              | InitCaches a
              | Reset (Unit -> a)
@@ -331,6 +351,9 @@ reinitCache next =  do
 toggleAnimation :: Model -> Model
 toggleAnimation model = model { animate = not model.animate }
 
+toggleLines :: Model -> Model
+toggleLines model = model { lines = not model.lines }
+
 toggleRepr :: Model -> Model
 toggleRepr model =
   let newRepr = case model.coordType of
@@ -353,11 +376,12 @@ changeMax power model =
 
 redraw :: Model -> Effect Unit
 redraw model =
-  let propTick = Reader.runReader (An.proportionalTick model.time) model.maxTick
-      alpha = 0.3 + 0.6 * (square $ Math.cos $ Math.pi * propTick)
-      interpolater = Reader.runReader (An.sqrtInterpolate model.time) model.maxTick
-      coordGetter = getCoordinates interpolater model.cache (toNumber $ getSize model)
-      colorGetter = getColor interpolater (numInPlace model) model.colorCache
+  let sqrtInterp = Reader.runReader (An.sqrtInterpolate model.time) model.maxTick
+      sinInterp = Reader.runReader (An.sinInterpolate model.time) model.maxTick
+      alpha = sinInterp 0.6 0.15
+      coordGetter = getCoordinates sqrtInterp model.cache (toNumber $ getSize model)
+      oldCoordGetter = getCoordinates (\x y -> y) model.cache (toNumber $ getSize model)
+      colorGetter = getColor sqrtInterp (numInPlace model) model.colorCache
   in do
     mcanvas <- Ca.getCanvasElementById canvasId
     case mcanvas of
@@ -368,7 +392,7 @@ redraw model =
         Ca.clearRect ctx {x: 0.0, y: 0.0, width: dim.width, height: dim.height}
         Ca.setGlobalAlpha ctx alpha
         sequence_ $
-          A.mapWithIndex (\idx vs -> drawBubbles ctx coordGetter colorGetter model.radius (Tuple idx vs)) model.bubbles
+          A.mapWithIndex (\idx vs -> drawBubbles ctx model oldCoordGetter coordGetter colorGetter model.radius (Tuple idx vs)) model.bubbles
         pure unit
 
 redrawStep :: H.ComponentDSL Model Query Message Aff Unit
@@ -402,6 +426,7 @@ eval (ChangeScale scale reply) =
 eval (ChangeRadius radius reply) =
   H.modify_ (_ { radius = radius } ) *> pure (reply unit)
 eval (ToggleRepr reply) = H.modify_ toggleRepr *> reinitCache (reply unit)
+eval (ToggleLines reply) = H.modify_ toggleLines *> pure (reply unit)
 eval (ToggleAnimation reply) = H.modify_ toggleAnimation *> reinitCache (reply unit)
 eval (MoveTick reply) = do
   model <- H.get
