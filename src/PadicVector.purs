@@ -1,13 +1,14 @@
 module PadicVector where
 
 import Data.Eq ((==))
+import Data.FunctorWithIndex (mapWithIndex)
 import Data.Int (pow, toNumber)
 import Data.List (List)
 import Data.List as L
 import Data.List.Lazy as LL
 import Data.Monoid ((<>))
+import Data.Number as Number
 import HalogenHelpers.Coordinates (Coordinates)
-import Math as Math
 import PolarCoordinates (PolarCoordinates, mkPolar, polarToCartesian)
 import Prelude (mod, otherwise, (*), (+), (-), (/))
 
@@ -28,14 +29,14 @@ addCoords a b = { x: a.x + b.x
 calcStep :: Int -> Int -> Int -> PolarCoordinates
 calcStep p n d =
   let r = 1.0 / toNumber (p `pow` n)
-      theta = Math.tau / toNumber p * toNumber d
+      theta = Number.tau / toNumber p * toNumber d
   in mkPolar r theta
 
 toCoordList :: Int -> Int -> Int -> List PolarCoordinates
 toCoordList maxLength p x =
   let padic = padicRep p x
       extra = L.fromFoldable (LL.replicate (maxLength - (L.length padic)) 0)
-  in L.mapWithIndex (calcStep p) (padic <> extra)
+  in mapWithIndex (calcStep p) (padic <> extra)
 
 baseCoordinates :: Coordinates
 baseCoordinates = {x: 0.0, y: 0.0}

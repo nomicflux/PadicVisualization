@@ -18,6 +18,7 @@ import Data.List as L
 import Data.Map (Map)
 import Data.Map as M
 import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Number as Number
 import Data.Rational (Rational, fromInt)
 import Data.Rational as R
 import Data.Traversable (for_, sequence_)
@@ -30,7 +31,6 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import HalogenHelpers.Coordinates (Coordinates)
 import HalogenHelpers.Coordinates as C
-import Math as Math
 import Norm (Norm(..), getPrime, isPadic, takeNorm)
 import PadicVector (baseCoordinates)
 import PadicVector as PV
@@ -49,7 +49,6 @@ type Model = { maxInt :: Int
              , bubbles :: Array (List Int)
              , time :: Maybe Tick
              , size :: Int
-             , numIncs :: Int
              , coordType :: CoordType
              , cache :: Map Int Coordinates
              , colorCache :: Map Int String
@@ -93,7 +92,6 @@ initialModel input =
      , bubbles: mkBubbles maxInt
      , time: Nothing
      , size: input.size
-     , numIncs: 0
      , coordType: input.coordType
      , cache: M.empty
      , colorCache: M.empty
@@ -113,10 +111,10 @@ initialModel input =
 getR :: Model -> Rational -> Rational
 getR model value = value / fromInt maxValue
   where
-    maxValue = if isPadic model.norm then 1 else model.maxInt
+    maxValue = if isPadic model.norm then 1 else (pow (model.maxInt + 1) 2)
 
 getTheta :: Model -> Int -> Number
-getTheta model value = Math.pi * 2.0 * (toNumber value) / (toNumber model.maxInt)
+getTheta model value = Number.pi * 2.0 * (toNumber value) / (toNumber (model.maxInt + 1))
 
 toPolar :: Model -> Int -> PolarCoordinates
 toPolar model n =
@@ -138,7 +136,7 @@ getCircleCoord model n =
 getPadicCoord :: Model -> Int -> Coordinates
 getPadicCoord model n =
   let p = fromMaybe 0 (getPrime model.norm)
-  in normalizeCoords model $ PV.toVector model.maxInt p n
+  in normalizeCoords model $ PV.toVector (pow (model.maxInt + 1) 3) p n
 
 getCoordinates :: (Number -> Number -> Number) ->
                   Map Int Coordinates -> Number ->
@@ -152,24 +150,19 @@ getCoordinates interpolater cache size (Tuple oldValue newValue) =
      }
 
 getColor :: (Number -> Number -> Number) ->
-            (Int -> Int) ->
             Map Int String ->
             Tuple Int Int -> String
-getColor interpolater placer cache (Tuple oldValue newValue) =
-  let interpolated = round $ interpolater (toNumber newValue) (toNumber oldValue)
-  in  fromMaybe "#000" $ M.lookup (placer interpolated) cache
+getColor interpolater cache (Tuple oldValue _newValue) =
+  fromMaybe "#000" $ M.lookup oldValue cache
 
-component :: H.Component HH.HTML Query Input Message Aff
-component = H.lifecycleComponent { initialState: initialModel
-                                 , render
-                                 , eval
-                                 , receiver: const Nothing
-                                 , initializer: Just $ H.action InitCaches
-                                 , finalizer: Nothing
-                                 }
-
-numInPlace :: Model -> Int -> Int
-numInPlace model x = (x - model.numIncs) `mod` (model.maxInt + 1)
+component :: forall output. H.Component Query Input output Aff
+component = H.mkComponent { initialState: initialModel
+                          , render
+                          , eval: H.mkEval $ H.defaultEval { handleAction = handleAction
+                                                           , handleQuery = handleQuery
+                                                           , initialize = Just InitCaches
+                                                           }
+                          }
 
 square :: Number -> Number
 square n = n * n
@@ -178,16 +171,22 @@ mkColor :: Model -> Int -> String
 mkColor model value =
   let p = fromMaybe 1 $ getPrime model.norm
       divisor = case model.coordType of
-        Circular -> p
-        PadicVector -> 1
-      step = 360.0 / toNumber ((model.maxInt + 1) / divisor)
-      hue = step * toNumber value
-  in Co.toHexString (Co.hsv hue 1.0 1.0)
+        Circular -> toNumber p
+        PadicVector -> 1.0
+      step = 1.0 / toNumber (model.maxInt + 1)
+      pstep = step * divisor
+      sat = 0.5 + 0.5 * step * toNumber value
+      val = 1.0 - 0.5 * step * toNumber value
+      hue = 360.0 * pstep * toNumber value
+  in Co.toHexString (Co.hsv hue sat val)
 
 drawCircle :: Ca.Context2D -> Coordinates -> Number -> String -> Effect Unit
 drawCircle ctx coords r color = do
   Ca.beginPath ctx
-  Ca.arc ctx { x: coords.x, y: coords.y, radius: r, start: 0.0, end: 2.0 * Math.pi }
+  Ca.moveTo ctx coords.x coords.y
+  Ca.arc ctx { x: coords.x, y: coords.y
+             , radius: r, useCounterClockwise: true
+             , start: 0.0, end: 2.0 * Number.pi }
   Ca.setFillStyle ctx color
   Ca.fill ctx
   Ca.setStrokeStyle ctx color
@@ -198,9 +197,9 @@ drawLine :: Ca.Context2D -> Coordinates -> Coordinates -> Number -> String -> Ef
 drawLine ctx start end r color = do
   Ca.beginPath ctx
   Ca.moveTo ctx start.x start.y
-  Ca.setStrokeStyle ctx color
   Ca.setLineWidth ctx r
   Ca.lineTo ctx end.x end.y
+  Ca.setStrokeStyle ctx color
   Ca.stroke ctx
   Ca.closePath ctx
 
@@ -220,8 +219,9 @@ drawBubble ctx model oldCoordGetter coordGetter colorGetter radius bubble =
       startCoords = oldCoordGetter bubble
       color = colorGetter bubble
   in drawCircle ctx coords (toNumber radius) color *>
-     if model.lines then drawLine ctx startCoords coords (toNumber radius) color
-                    else pure unit
+     (if model.lines then drawLine ctx startCoords coords (toNumber radius) color
+                     else pure unit)
+
 
 drawBubbles :: Ca.Context2D ->
                Model ->
@@ -240,80 +240,64 @@ canvasId = "bubble-canvas"
 getSize :: Model -> Int
 getSize model = round $ 4.0 * toNumber model.scale
 
-render :: Model -> H.ComponentHTML Query
+render :: forall action slots m. Model -> H.ComponentHTML action slots m
 render model =
   let size = getSize model
   in
    HH.canvas [ HP.width size
              , HP.height size
-             , HP.id_ canvasId
+             , HP.id canvasId
              ]
 
-data Query a = ChangeMax Int (Unit -> a)
-             | ChangeTick Int (Unit -> a)
-             | ChangeNorm Norm (Unit -> a)
-             | ChangeScale Int (Unit -> a)
-             | ChangeRadius Int (Unit -> a)
-             | ChangeAddTo Int (Unit -> a)
-             | ChangeMultBy Int (Unit -> a)
-             | ChangeQuadBy Int (Unit -> a)
-             | ChangeCubeBy Int (Unit -> a)
-             | ChangeSqrt Boolean (Unit -> a)
-             | ChangeCbrt Boolean (Unit -> a)
-             | ToggleRepr (Unit -> a)
-             | ToggleLines (Unit -> a)
-             | ToggleAnimation (Unit -> a)
-             | InitCaches a
-             | Reset (Unit -> a)
-             | MoveTick (Unit -> a)
+data Query a = ReceiveAction Action a
 
-data Message = Noop
+data Action = ChangeMax Int
+            | ChangeTick Int
+            | ChangeNorm Norm
+            | ChangeScale Int
+            | ChangeRadius Int
+            | ChangeAddTo Int
+            | ChangeMultBy Int
+            | ChangeQuadBy Int
+            | ChangeCubeBy Int
+            | ChangeSqrt Boolean
+            | ChangeCbrt Boolean
+            | ToggleRepr
+            | ToggleLines
+            | ToggleAnimation
+            | InitCaches
+            | Reset
+            | MoveTick
 
 inRange :: Int -> Int -> Boolean
-inRange maxInt v = v <= maxInt && v >= 0
+inRange maxInt v = v <= (pow (maxInt + 1) 3) && v >= 0
 
-replaceBubble :: Int -> Inc -> Int -> Int
-replaceBubble maxInt inc v =
+replaceBubble :: Int -> Int -> Int
+replaceBubble maxInt v =
   if inRange maxInt v
   then v
-  else v `mod` (maxInt + 1)
+  else v `mod` (pow (maxInt + 1) 3)
 
-type Inc = { addTo :: Int
-           , multBy :: Int
-           , sqrBy :: Int
-           , cubeBy :: Int
-           , sqrt :: Boolean
-           , cbrt :: Boolean
-           }
-
-bubbleFn :: Norm -> Int -> Inc -> Int -> (List Int)
-bubbleFn norm steps inc =
-  let base = L.singleton <<< B.cubeBy inc.cubeBy inc.sqrBy inc.multBy inc.addTo
-      sqrted = if inc.sqrt then base >=> B.normSqrt norm steps else base
-      cbrted = if inc.cbrt then sqrted >=> B.normCbrt norm steps else sqrted
+bubbleFn :: Model -> Int -> (List Int)
+bubbleFn model =
+  let base = L.singleton <<< B.cubeBy model.cubeCoeff model.quadCoeff model.multBy model.addTo
+      sqrted = if model.sqrt then base >=> B.normSqrt model.norm (2 * model.power) else base
+      cbrted = if model.cbrt then sqrted >=> B.normCbrt model.norm (3 * model.power) else sqrted
   in cbrted
 
 setFromIdx :: forall h a. STArray h (List a) -> Int -> (Int -> List a) -> ST h Unit
 setFromIdx array idx f = AST.modify idx (const (f idx)) array *> pure unit
 
-incBubble :: forall h. Model -> Inc -> STArray h (List Int) -> Int -> ST h Unit
-incBubble model inc bubbles idx =
-  setFromIdx bubbles idx $
-    map (replaceBubble model.maxInt inc) <<< bubbleFn model.norm model.power inc
+incBubble :: forall h. Model -> STArray h (List Int) -> Int -> ST h Unit
+incBubble model bubbles idx =
+  let fn = bubbleFn model
+  in setFromIdx bubbles idx fn
 
 incAll :: Model -> Model
 incAll model =
   let
-    inc = { addTo: model.addTo
-          , multBy: model.multBy
-          , sqrBy: model.quadCoeff
-          , cubeBy: model.cubeCoeff
-          , sqrt: model.sqrt
-          , cbrt: model.cbrt
-          }
-
     changer :: forall h. STArray h (List Int) -> Int -> ST h Unit
-    changer = incBubble model inc
+    changer = incBubble model
 
     newBubblesST :: forall h. Array (List Int) -> ST h (Array (List Int))
     newBubblesST bubbles = do
@@ -323,14 +307,17 @@ incAll model =
     newBubbles = ST.run (newBubblesST model.bubbles)
   in
    model { bubbles = newBubbles
-         , numIncs = (model.multBy * model.numIncs + model.addTo) `mod` (model.maxInt + 1)
          }
 
-reinitCache :: forall a. a -> H.ComponentDSL Model Query Message Aff a
-reinitCache next =  do
-  model <- H.get
+reinitCache :: forall output. H.HalogenM Model Action () output Aff Unit
+reinitCache = do
   H.modify_ regenBubbles
-  let ints = A.range 0 model.maxInt
+  H.modify_ incAll
+  model <- H.get
+  let
+      inputInts = A.range 0 model.maxInt
+      outputInts = A.filter (\x -> x > model.maxInt) $ A.concatMap A.fromFoldable model.bubbles
+      ints = A.concat [inputInts, outputInts]
       emptyCache :: Map Int Coordinates
       emptyCache = M.empty
 
@@ -345,8 +332,7 @@ reinitCache next =  do
                , colorCache = colorCache
                })
   H.liftEffect $ redraw model
-  H.modify_ incAll
-  pure next
+  pure unit
 
 toggleAnimation :: Model -> Model
 toggleAnimation model = model { animate = not model.animate }
@@ -363,9 +349,7 @@ toggleRepr model =
 
 regenBubbles :: Model -> Model
 regenBubbles model = model { bubbles = mkBubbles model.maxInt
-                           , numIncs = 0
                            }
-
 changeMax :: Int -> Model -> Model
 changeMax power model =
   let x = case model.norm of
@@ -380,8 +364,8 @@ redraw model =
       sinInterp = Reader.runReader (An.sinInterpolate model.time) model.maxTick
       alpha = sinInterp 0.6 0.15
       coordGetter = getCoordinates sqrtInterp model.cache (toNumber $ getSize model)
-      oldCoordGetter = getCoordinates (\x y -> y) model.cache (toNumber $ getSize model)
-      colorGetter = getColor sqrtInterp (numInPlace model) model.colorCache
+      oldCoordGetter = getCoordinates (\_ y -> y) model.cache (toNumber $ getSize model)
+      colorGetter = getColor sqrtInterp model.colorCache
   in do
     mcanvas <- Ca.getCanvasElementById canvasId
     case mcanvas of
@@ -395,7 +379,7 @@ redraw model =
           A.mapWithIndex (\idx vs -> drawBubbles ctx model oldCoordGetter coordGetter colorGetter model.radius (Tuple idx vs)) model.bubbles
         pure unit
 
-redrawStep :: H.ComponentDSL Model Query Message Aff Unit
+redrawStep :: forall action output. H.HalogenM Model action () output Aff Unit
 redrawStep = do
   model <- H.get
   H.modify_ (_ { animate = false })
@@ -403,50 +387,53 @@ redrawStep = do
   H.modify_ (_ { animate = true })
   pure unit
 
-eval :: Query ~> H.ComponentDSL Model Query Message Aff
-eval (ChangeMax power reply) =
-  H.modify_ (changeMax power) *> reinitCache (reply unit)
-eval (ChangeNorm norm reply) = H.modify_ (_ { norm = norm }) *> reinitCache (reply unit)
-eval (ChangeTick tick reply) =
-  H.modify_ (_ { maxTick = tick } ) *> pure (reply unit)
-eval (ChangeAddTo addTo reply) =
-  H.modify_ (_ { addTo = addTo } ) *> reinitCache (reply unit)
-eval (ChangeMultBy multBy reply) =
-  H.modify_ (_ { multBy = multBy } ) *> reinitCache (reply unit)
-eval (ChangeQuadBy quadCoeff reply) =
-  H.modify_ (_ { quadCoeff = quadCoeff } ) *> reinitCache (reply unit)
-eval (ChangeCubeBy cubeCoeff reply) =
-  H.modify_ (_ { cubeCoeff = cubeCoeff } ) *> reinitCache (reply unit)
-eval (ChangeSqrt b reply) =
-  H.modify_ (_ { sqrt = b }) *> reinitCache (reply unit)
-eval (ChangeCbrt b reply) =
-  H.modify_ (_ { cbrt = b }) *> reinitCache (reply unit)
-eval (ChangeScale scale reply) =
-  H.modify_ (_ { scale = scale } ) *> reinitCache (reply unit)
-eval (ChangeRadius radius reply) =
-  H.modify_ (_ { radius = radius } ) *> pure (reply unit)
-eval (ToggleRepr reply) = H.modify_ toggleRepr *> reinitCache (reply unit)
-eval (ToggleLines reply) = H.modify_ toggleLines *> pure (reply unit)
-eval (ToggleAnimation reply) = H.modify_ toggleAnimation *> reinitCache (reply unit)
-eval (MoveTick reply) = do
+handleQuery :: forall a output. Query a -> H.HalogenM Model Action () output Aff (Maybe a)
+handleQuery (ReceiveAction a next) = handleAction a *> pure (Just next)
+
+handleAction :: forall output. Action -> H.HalogenM Model Action () output Aff Unit
+handleAction (ChangeMax power) =
+  H.modify_ (changeMax power) *> reinitCache
+handleAction (ChangeNorm norm) = H.modify_ (_ { norm = norm }) *> reinitCache
+handleAction (ChangeTick tick) =
+  H.modify_ (_ { maxTick = tick } ) *> pure unit
+handleAction (ChangeAddTo addTo) =
+  H.modify_ (_ { addTo = addTo } ) *> reinitCache
+handleAction (ChangeMultBy multBy) =
+  H.modify_ (_ { multBy = multBy } ) *> reinitCache
+handleAction (ChangeQuadBy quadCoeff) =
+  H.modify_ (_ { quadCoeff = quadCoeff } ) *> reinitCache
+handleAction (ChangeCubeBy cubeCoeff) =
+  H.modify_ (_ { cubeCoeff = cubeCoeff } ) *> reinitCache
+handleAction (ChangeSqrt b) =
+  H.modify_ (_ { sqrt = b }) *> reinitCache
+handleAction (ChangeCbrt b) =
+  H.modify_ (_ { cbrt = b }) *> reinitCache
+handleAction (ChangeScale scale) =
+  H.modify_ (_ { scale = scale } ) *> reinitCache
+handleAction (ChangeRadius radius) =
+  H.modify_ (_ { radius = radius } ) *> pure unit
+handleAction ToggleRepr = H.modify_ toggleRepr *> reinitCache
+handleAction ToggleLines = H.modify_ toggleLines *> pure unit
+handleAction ToggleAnimation = H.modify_ toggleAnimation *> reinitCache
+handleAction MoveTick = do
   model <- H.get
   case model.animate of
     false -> do
       H.liftEffect $ redraw model
-      pure (reply unit)
+      pure unit
     true -> do
       let newTick = model.time >>= \t -> Reader.runReader (incTick t) model.maxTick
       case newTick of
         Just _ -> do
           H.modify_ (_ { time = newTick })
           redrawStep
-          pure (reply unit)
+          pure unit
         Nothing -> do
           H.modify_ (_ { time = Just startTick })
           redrawStep
-          pure (reply unit)
-eval (InitCaches next) = reinitCache next
-eval (Reset reply) = do
+          pure unit
+handleAction InitCaches = reinitCache
+handleAction Reset = do
   model <- H.get
   H.modify_ (changeMax model.power)
-  reinitCache (reply unit)
+  reinitCache

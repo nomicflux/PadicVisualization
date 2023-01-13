@@ -5,7 +5,7 @@ import Prelude
 import Control.Monad.Reader (class MonadReader, ask)
 import Data.Int (toNumber)
 import Data.Maybe (Maybe(..))
-import Math as Math
+import Data.Number as Number
 
 newtype Tick = Tick Int
 
@@ -41,11 +41,11 @@ interpolate f t = do
 
 sinInterpolate :: forall m. MonadReader Int m =>
                   Maybe Tick -> m (Number -> Number -> Number)
-sinInterpolate = interpolate (flip Math.pow 2.0 <<< Math.sin <<< (\x -> Math.pi * x - Math.pi / 4.0))
+sinInterpolate = interpolate (flip Number.pow 2.0 <<< Number.sin <<< (\x -> Number.pi * x - Number.pi / 4.0))
 
 cosInterpolate :: forall m. MonadReader Int m =>
                   Maybe Tick -> m (Number -> Number -> Number)
-cosInterpolate = interpolate ((1.0 - _) <<< Math.cos <<< (\x -> Math.pi * x))
+cosInterpolate = interpolate ((1.0 - _) <<< Number.cos <<< (\x -> Number.pi * x))
 
 cubicInterpolate :: forall m. MonadReader Int m =>
                     Maybe Tick -> m (Number -> Number -> Number)
@@ -53,7 +53,7 @@ cubicInterpolate =
   let stretch x = x * 2.0 - 1.0
       unstretch x = (x + 1.0) * 0.5
   in
-   interpolate $ unstretch <<< (\x -> Math.pow x 3.0) <<< stretch
+   interpolate $ unstretch <<< (\x -> Number.pow x 3.0) <<< stretch
 
 sqrtInterpolate :: forall m. MonadReader Int m =>
                    Maybe Tick -> m (Number -> Number -> Number)
@@ -61,8 +61,8 @@ sqrtInterpolate =
   let stretch x = x * 2.0 - 1.0
       unstretch x = (x + 1.0) * 0.5
       cbrt x = if x >= 0.0
-               then Math.pow x 0.5
-               else -1.0 * Math.pow (-x) 0.5
+               then Number.pow x 0.5
+               else -1.0 * Number.pow (-x) 0.5
   in
    interpolate $ unstretch <<< cbrt <<< stretch
 

@@ -19,4 +19,4 @@ main = HA.runHalogenAff do
   io <- runUI CA.component unit body
   forever do
     _ <- delay tickDelay
-    void $ io.query $ H.action $ CA.Tick
+    void $ io.query $ H.mkTell $ CA.ReceiveAction CA.Tick

@@ -1,7 +1,7 @@
 module PolarCoordinates where
 
+import Data.Number as Number
 import HalogenHelpers.Coordinates (Coordinates)
-import Math as Math
 import Prelude ((*))
 
 type PolarCoordinates = { r :: Number
@@ -13,8 +13,8 @@ mkPolar r theta = { r, theta }
 
 polarToCartesian :: PolarCoordinates -> Coordinates
 polarToCartesian coords =
-  { x: coords.r * Math.cos coords.theta
-  , y: coords.r * Math.sin coords.theta
+  { x: coords.r * Number.cos coords.theta
+  , y: coords.r * Number.sin coords.theta
   }
 
 scale :: Number -> PolarCoordinates -> PolarCoordinates

@@ -12,8 +12,8 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import HalogenHelpers.Communication (passAlong)
 import Norm (Norm(..), getPrime)
+import Type.Proxy (Proxy(..))
 
 baseInput :: CC.Input
 baseInput = { size: 1024
@@ -31,77 +31,85 @@ baseInput = { size: 1024
             , cbrt: false
             }
 
-data Query a = SetNorm Int a
-             | SetMax Int a
-             | SetTick Int a
-             | SetScale Int a
-             | SetRadius Int a
-             | SetAdd Int a
-             | SetMult Int a
-             | SetQuad Int a
-             | SetCube Int a
-             | ChangeSqrt Boolean a
-             | ChangeCbrt Boolean a
-             | ToggleRepr a
-             | ToggleAnimation a
-             | ToggleLines a
-             | Reset a
-             | Tick a
-             | HandleMessage CC.Message a
+data Query a = ReceiveAction Action a
 
-component :: H.Component HH.HTML Query Unit CC.Message Aff
-component = H.parentComponent { initialState: const unit
-                              , render
-                              , eval
-                              , receiver: const Nothing
-                              }
+data Action = SetNorm Int
+             | SetMax Int
+             | SetTick Int
+             | SetScale Int
+             | SetRadius Int
+             | SetAdd Int
+             | SetMult Int
+             | SetQuad Int
+             | SetCube Int
+             | ChangeSqrt Boolean
+             | ChangeCbrt Boolean
+             | ToggleRepr
+             | ToggleAnimation
+             | ToggleLines
+             | Reset
+             | Tick
+             | Noop
+
+component :: forall output. H.Component Query Unit output Aff
+component = H.mkComponent { initialState: const unit
+                          , render
+                          , eval: H.mkEval $ H.defaultEval { handleAction = handleAction
+                                                           , handleQuery = handleQuery
+                                                           }
+                          }
 
 toNatural :: String -> Maybe Int
 toNatural = fromString >>> filter (_ >= 0)
 
-render :: Unit -> H.ParentHTML Query CC.Query CC.Slot Aff
+type CanvasSlot = ( canvas :: H.Slot CC.Query Void Unit )
+_canvas = Proxy :: Proxy "canvas"
+
+render :: Unit -> H.ComponentHTML Action CanvasSlot Aff
 render _ = HH.div [ HP.class_ $ HH.ClassName "pure-g" ]
            [ renderSidebar, renderMain ]
   where
-    withDescription :: H.ParentHTML Query CC.Query CC.Slot Aff ->
+    withDescription :: H.ComponentHTML Action CanvasSlot Aff ->
                        Maybe String -> String ->
-                       H.ParentHTML Query CC.Query CC.Slot Aff
+                       H.ComponentHTML Action CanvasSlot Aff
     withDescription inputDiv descr class_ =
       let descrDiv = maybe [] (\txt -> [ HH.div [ HP.class_ $ HH.ClassName "description"] [ HH.text txt ]]) descr
       in HH.div [ HP.class_ $ HH.ClassName class_ ] (inputDiv : descrDiv)
 
     mkButton :: String -> String -> Maybe String ->
-                (Unit -> Query Unit) ->
-                H.ParentHTML Query CC.Query CC.Slot Aff
+                Action ->
+                H.ComponentHTML Action CanvasSlot Aff
     mkButton text class_ description query =
       let buttonDiv = HH.button [ HP.class_ $ HH.ClassName ("pure-button button-" <> class_)
-                                , HE.onClick $ HE.input_ query
+                                , HE.onClick \_ -> query
                                 , HP.type_ $ HP.ButtonButton
                                 ]
                       [ HH.text text ]
       in withDescription buttonDiv description "button-div"
 
     mkCheckbox :: String -> Maybe String ->
-                  (Boolean -> Unit -> Query Unit) ->
-                  H.ParentHTML Query CC.Query CC.Slot Aff
+                  (Boolean -> Action) ->
+                  H.ComponentHTML Action CanvasSlot Aff
     mkCheckbox text descr query =
       let inputDiv = HH.div_ [ HH.label_ [ HH.text ( text <> ": ")]
                              , HH.input [ HP.class_ (HH.ClassName "attr-boolean")
                                         , HP.type_ HP.InputCheckbox
-                                        , HE.onChecked $ HE.input query
+                                        , HE.onChecked query
                                         , HP.title text
                                         ]
                              ]
       in withDescription inputDiv descr "checkbox-div"
 
     mkNumInput :: String -> String -> Maybe String ->
-                  (Int -> Unit -> Query Unit) ->
-                  H.ParentHTML Query CC.Query CC.Slot Aff
+                  (Int -> Action) ->
+                  H.ComponentHTML Action CanvasSlot Aff
     mkNumInput text placeholder descr query =
       let inputDiv = HH.div_ [ HH.label_ [HH.text (text <> ": ")]
                              , HH.input [ HP.class_ (HH.ClassName "attr-numeric")
                                         , HP.type_ HP.InputNumber
-                                        , HE.onValueChange (toNatural >=> HE.input query)
+                                        , HE.onValueChange \n -> (case toNatural n of
+                                                                     Nothing -> Noop
+                                                                     Just x -> query x)
                                         , HP.title text
                                         , HP.prop (HH.PropName "maxLength") 4
                                         , HP.placeholder placeholder
@@ -110,7 +118,7 @@ render _ = HH.div [ HP.class_ $ HH.ClassName "pure-g" ]
                              ]
       in withDescription inputDiv descr "input-div"
 
-    renderSidebar :: H.ParentHTML Query CC.Query CC.Slot Aff
+    renderSidebar :: H.ComponentHTML Action CanvasSlot Aff
     renderSidebar =
       HH.div [ HP.class_ $ HH.ClassName "pure-u-1-4 sidebar" ]
       [ mkButton "Toggle Representation" "primary" (Just "Between fractal given by the p-adic representation, or circles given by the p-adic norm") ToggleRepr
@@ -130,28 +138,39 @@ render _ = HH.div [ HP.class_ $ HH.ClassName "pure-g" ]
       , mkCheckbox "Cube Root?" (Just "Take cube root of the above") ChangeCbrt
       ]
 
-    renderMain :: H.ParentHTML Query CC.Query CC.Slot Aff
+    renderMain :: H.ComponentHTML Action CanvasSlot Aff
     renderMain =
       HH.div [ HP.class_ $ HH.ClassName "pure-u-3-4" ]
-      [ HH.slot CC.Slot CC.component baseInput (HE.input HandleMessage) ]
+      [ HH.slot_ _canvas unit CC.component baseInput ]
 
-eval :: forall m. Query ~> H.ParentDSL Unit Query CC.Query CC.Slot CC.Message m
-eval (SetNorm normNum next) =
+
+passAlong :: forall state action output m. CC.Action -> H.HalogenM state action CanvasSlot output m Unit
+passAlong action = H.tell _canvas unit $ toQuery action
+                   where toQuery :: CC.Action -> (Unit -> CC.Query Unit)
+                         toQuery action = CC.ReceiveAction action
+
+handleQuery :: forall a output. Query a -> H.HalogenM Unit Action CanvasSlot output Aff (Maybe a)
+handleQuery (ReceiveAction a next) = handleAction a *> pure (Just next)
+
+handleAction :: forall output m. Action -> H.HalogenM Unit Action CanvasSlot output m Unit
+handleAction Noop = pure unit
+handleAction (SetNorm normNum) =
   let norm = if normNum <= 1 then Inf else Padic normNum
-  in passAlong (CC.ChangeNorm norm) *> passAlong CC.Reset *> pure next
-eval (SetMax max next) = passAlong (CC.ChangeMax max) *> pure next
-eval (SetTick max next) = passAlong (CC.ChangeTick max) *> pure next
-eval (SetScale scale next) = passAlong (CC.ChangeScale scale) *> pure next
-eval (SetRadius radius next) = passAlong (CC.ChangeRadius radius) *> pure next
-eval (SetAdd x next) = passAlong (CC.ChangeAddTo x) *> pure next
-eval (SetMult y next) = passAlong (CC.ChangeMultBy y) *> pure next
-eval (SetQuad q next) = passAlong (CC.ChangeQuadBy q) *> pure next
-eval (SetCube c next) = passAlong (CC.ChangeCubeBy c) *> pure next
-eval (ChangeSqrt b next) = passAlong (CC.ChangeSqrt b) *> pure next
-eval (ChangeCbrt b next) = passAlong (CC.ChangeCbrt b) *> pure next
-eval (ToggleRepr next) = passAlong CC.ToggleRepr *> pure next
-eval (ToggleLines next) = passAlong CC.ToggleLines *> pure next
-eval (ToggleAnimation next) = passAlong CC.ToggleAnimation *> pure next
-eval (Reset next) = passAlong CC.Reset *> pure next
-eval (Tick next) = passAlong CC.MoveTick *> pure next
-eval (HandleMessage msg next) = pure next
+  in passAlong (CC.ChangeNorm norm) *>
+     passAlong CC.Reset *>
+     pure unit
+handleAction (SetMax max) = passAlong (CC.ChangeMax max) *> pure unit
+handleAction (SetTick max) = passAlong (CC.ChangeTick max) *> pure unit
+handleAction (SetScale scale) = passAlong (CC.ChangeScale scale) *> pure unit
+handleAction (SetRadius radius) = passAlong (CC.ChangeRadius radius) *> pure unit
+handleAction (SetAdd x) = passAlong (CC.ChangeAddTo x) *> pure unit
+handleAction (SetMult y) = passAlong (CC.ChangeMultBy y) *> pure unit
+handleAction (SetQuad q) = passAlong (CC.ChangeQuadBy q) *> pure unit
+handleAction (SetCube c) = passAlong (CC.ChangeCubeBy c) *> pure unit
+handleAction (ChangeSqrt b) = passAlong (CC.ChangeSqrt b) *> pure unit
+handleAction (ChangeCbrt b) = passAlong (CC.ChangeCbrt b) *> pure unit
+handleAction ToggleRepr = passAlong CC.ToggleRepr *> pure unit
+handleAction ToggleLines = passAlong CC.ToggleLines *> pure unit
+handleAction ToggleAnimation = passAlong CC.ToggleAnimation *> pure unit
+handleAction Reset = passAlong CC.Reset *> pure unit
+handleAction Tick = passAlong CC.MoveTick *> pure unit

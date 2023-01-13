@@ -2,7 +2,6 @@ module Roots where
 
 import Prelude
 
-import Data.Foldable (foldl)
 import Data.List as L
 import Data.List (List(..), (:))
 import Data.Map (Map)
@@ -26,7 +25,7 @@ modCubeRoots p =
   in M.fromFoldableWith joinLists squared
 
 recipMod :: Int -> Int -> Maybe Int
-recipMod p 1 = Just 1
+recipMod _ 1 = Just 1
 recipMod p x = if gcd p x == 1
                  then Just $ go 0 1 p x
                  else Nothing
