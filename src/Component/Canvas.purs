@@ -13,7 +13,7 @@ import Data.Array as A
 import Data.Array.ST (STArray)
 import Data.Array.ST as AST
 import Data.Int (round, toNumber, pow)
-import Data.List (List)
+import Data.List (List(..), filter, (:))
 import Data.List as L
 import Data.Map (Map)
 import Data.Map as M
@@ -67,6 +67,8 @@ type Model = { maxInt :: Int
              , cubeCoeff :: Int
              , sqrt :: Boolean
              , cbrt :: Boolean
+             , circuit :: Set Int
+             , trajectoryFrom :: Maybe Int
              }
 
 type Input = { size :: Int
@@ -82,6 +84,7 @@ type Input = { size :: Int
              , cubeCoeff :: Int
              , sqrt :: Boolean
              , cbrt :: Boolean
+             , trajectoryFrom :: Maybe Int
              }
 
 mkBubbles :: Int -> Array (List Int)
@@ -112,6 +115,8 @@ initialModel input =
      , cubeCoeff: input.cubeCoeff
      , sqrt: input.sqrt
      , cbrt: input.cbrt
+     , circuit: fromMaybe S.empty (S.singleton <$> input.trajectoryFrom)
+     , trajectoryFrom: input.trajectoryFrom
      }
 
 getR :: Model -> Rational -> Rational
@@ -223,9 +228,11 @@ drawBubble ctx model oldCoordGetter coordGetter colorGetter radius bubble =
   let coords = coordGetter bubble
       startCoords = oldCoordGetter bubble
       color = colorGetter bubble
+      (Tuple origin newVal) = bubble
   in drawCircle ctx coords (toNumber radius) color *>
-     (if model.lines then drawLine ctx startCoords coords (toNumber radius) color
-                     else pure unit)
+     (if model.lines || S.member origin model.circuit
+      then drawLine ctx startCoords coords (toNumber radius) color
+      else pure unit)
 
 drawBubbles :: Ca.Context2D ->
                Model ->
@@ -274,6 +281,7 @@ data Action = ChangeMax Int
             | ChangeCubeBy Int
             | ChangeSqrt Boolean
             | ChangeCbrt Boolean
+            | TrajectoryFrom (Maybe Int)
             | ToggleRepr
             | ToggleLines
             | ToggleAnimation
@@ -321,6 +329,16 @@ incAll model =
    model { bubbles = newBubbles
          }
 
+followTrajectory :: Array (List Int) -> Maybe Int -> Set Int
+followTrajectory lookup x = go (L.fromFoldable x) S.empty
+  where
+    go :: List Int -> Set Int -> Set Int
+    go circuit acc = case circuit of
+      Nil -> acc
+      (input : q) -> let outputs = fromMaybe Nil $ A.index lookup input
+                         newOutputs = filter (not <<< flip S.member acc) outputs
+                     in go (q <> newOutputs) (S.insert input acc)
+
 reinitCache :: forall output. H.HalogenM Model Action () output Aff Unit
 reinitCache = do
   H.modify_ regenBubbles
@@ -341,12 +359,15 @@ reinitCache = do
           A.foldl (\acc x -> M.insert x (getPadicCoord model x) acc) emptyCache ints
 
       colorCache = A.foldl (\acc x -> M.insert x (mkColor model x) acc) M.empty ints
+      newCircuit = followTrajectory model.bubbles model.trajectoryFrom
   H.modify_ (_ { cache = cache
                , colorCache = colorCache
                , maxValue = maxValue
                , drawnBuffers = S.empty :: Set Tick
+               , circuit = newCircuit
                })
-  H.liftEffect $ redraw model
+  model2 <- H.get
+  H.liftEffect $ redraw model2
   pure unit
 
 toggleAnimation :: Model -> Model
@@ -442,6 +463,12 @@ handleAction (ChangeScale scale) =
   H.modify_ (_ { scale = scale } ) *> reinitCache
 handleAction (ChangeRadius radius) =
   H.modify_ (_ { radius = radius } ) *> reinitCache
+handleAction (TrajectoryFrom int) = do
+  H.modify_ (_ { trajectoryFrom = int } )
+  case int of
+    Nothing -> H.modify_ (_ { circuit = S.empty :: Set Int })
+    Just n -> H.modify_ (_ { circuit = S.singleton n } )
+  reinitCache
 handleAction ToggleRepr = H.modify_ toggleRepr *> reinitCache
 handleAction ToggleLines = H.modify_ toggleLines *> reinitCache
 handleAction ToggleAnimation = H.modify_ toggleAnimation *> reinitCache

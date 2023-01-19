@@ -29,6 +29,7 @@ baseInput = { size: 1024
             , cubeCoeff: 0
             , sqrt: false
             , cbrt: false
+            , trajectoryFrom: Nothing
             }
 
 data Query a = ReceiveAction Action a
@@ -44,6 +45,7 @@ data Action = SetNorm Int
              | SetCube Int
              | ChangeSqrt Boolean
              | ChangeCbrt Boolean
+             | TrajectoryFrom (Maybe Int)
              | ToggleRepr
              | ToggleAnimation
              | ToggleLines
@@ -100,23 +102,27 @@ render _ = HH.div [ HP.class_ $ HH.ClassName "pure-g" ]
                              ]
       in withDescription inputDiv descr "checkbox-div"
 
-    mkNumInput :: String -> String -> Maybe String ->
-                  (Int -> Action) ->
+    mkMaybeNumInput :: String -> Maybe String -> Maybe String ->
+                  (Maybe Int -> Action) ->
                   H.ComponentHTML Action CanvasSlot Aff
-    mkNumInput text placeholder descr query =
+    mkMaybeNumInput text placeholder descr query =
       let inputDiv = HH.div_ [ HH.label_ [HH.text (text <> ": ")]
                              , HH.input [ HP.class_ (HH.ClassName "attr-numeric")
                                         , HP.type_ HP.InputNumber
-                                        , HE.onValueChange \n -> (case toNatural n of
-                                                                     Nothing -> Noop
-                                                                     Just x -> query x)
+                                        , HE.onValueChange $ query <<< toNatural
                                         , HP.title text
                                         , HP.prop (HH.PropName "maxLength") 4
-                                        , HP.placeholder placeholder
+                                        , HP.placeholder $ fromMaybe "" placeholder
                                         , HP.min 0.0
                                         ]
                              ]
       in withDescription inputDiv descr "input-div"
+
+    mkNumInput :: String -> String -> Maybe String ->
+                  (Int -> Action) ->
+                  H.ComponentHTML Action CanvasSlot Aff
+    mkNumInput text placeholder descr query =
+      mkMaybeNumInput text (Just placeholder) descr ( fromMaybe Noop <<< map query )
 
     renderSidebar :: H.ComponentHTML Action CanvasSlot Aff
     renderSidebar =
@@ -136,6 +142,7 @@ render _ = HH.div [ HP.class_ $ HH.ClassName "pure-g" ]
       , mkNumInput "Cubic Coefficient" (show baseInput.cubeCoeff) (Just "Set cubic component") SetCube
       , mkCheckbox "Square Root?" (Just "Take square root of the above") ChangeSqrt
       , mkCheckbox "Cube Root?" (Just "Take cube root of the above") ChangeCbrt
+      , mkMaybeNumInput "Show Trajectory From" Nothing (Just "Draw line for full circuit from starting point") TrajectoryFrom
       ]
 
     renderMain :: H.ComponentHTML Action CanvasSlot Aff
@@ -169,6 +176,7 @@ handleAction (SetQuad q) = passAlong (CC.ChangeQuadBy q) *> pure unit
 handleAction (SetCube c) = passAlong (CC.ChangeCubeBy c) *> pure unit
 handleAction (ChangeSqrt b) = passAlong (CC.ChangeSqrt b) *> pure unit
 handleAction (ChangeCbrt b) = passAlong (CC.ChangeCbrt b) *> pure unit
+handleAction (TrajectoryFrom t) = passAlong (CC.TrajectoryFrom t) *> pure unit
 handleAction ToggleRepr = passAlong CC.ToggleRepr *> pure unit
 handleAction ToggleLines = passAlong CC.ToggleLines *> pure unit
 handleAction ToggleAnimation = passAlong CC.ToggleAnimation *> pure unit
