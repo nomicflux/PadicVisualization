@@ -44,3 +44,11 @@
     padding-top: 10px;
     padding-right: 10px;
 }
+
+.buffer-canvas {
+    display: none;
+}
+
+.buffer-canvases {
+    display: none;
+}

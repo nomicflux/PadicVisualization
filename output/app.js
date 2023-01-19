@@ -143,10 +143,10 @@
   };
   var applySecond = function(dictApply) {
     var apply1 = apply(dictApply);
-    var map25 = map(dictApply.Functor0());
+    var map26 = map(dictApply.Functor0());
     return function(a2) {
       return function(b2) {
-        return apply1(map25($$const(identity2))(a2))(b2);
+        return apply1(map26($$const(identity2))(a2))(b2);
       };
     };
   };
@@ -366,7 +366,7 @@
     };
   };
   var sortByImpl = function() {
-    function mergeFromTo(compare2, fromOrdering, xs1, xs2, from2, to) {
+    function mergeFromTo(compare3, fromOrdering, xs1, xs2, from2, to) {
       var mid;
       var i2;
       var j;
@@ -376,16 +376,16 @@
       var c;
       mid = from2 + (to - from2 >> 1);
       if (mid - from2 > 1)
-        mergeFromTo(compare2, fromOrdering, xs2, xs1, from2, mid);
+        mergeFromTo(compare3, fromOrdering, xs2, xs1, from2, mid);
       if (to - mid > 1)
-        mergeFromTo(compare2, fromOrdering, xs2, xs1, mid, to);
+        mergeFromTo(compare3, fromOrdering, xs2, xs1, mid, to);
       i2 = from2;
       j = mid;
       k = from2;
       while (i2 < mid && j < to) {
         x = xs2[i2];
         y = xs2[j];
-        c = fromOrdering(compare2(x)(y));
+        c = fromOrdering(compare3(x)(y));
         if (c > 0) {
           xs1[k++] = y;
           ++j;
@@ -401,14 +401,14 @@
         xs1[k++] = xs2[j++];
       }
     }
-    return function(compare2) {
+    return function(compare3) {
       return function(fromOrdering) {
         return function(xs) {
           var out;
           if (xs.length < 2)
             return xs;
           out = xs.slice(0);
-          mergeFromTo(compare2, fromOrdering, out, xs.slice(0), 0, xs.length);
+          mergeFromTo(compare3, fromOrdering, out, xs.slice(0), 0, xs.length);
           return out;
         };
       };
@@ -1395,7 +1395,7 @@
   var freeze = copyImpl;
   var thaw = copyImpl;
   var sortByImpl2 = function() {
-    function mergeFromTo(compare2, fromOrdering, xs1, xs2, from2, to) {
+    function mergeFromTo(compare3, fromOrdering, xs1, xs2, from2, to) {
       var mid;
       var i2;
       var j;
@@ -1405,16 +1405,16 @@
       var c;
       mid = from2 + (to - from2 >> 1);
       if (mid - from2 > 1)
-        mergeFromTo(compare2, fromOrdering, xs2, xs1, from2, mid);
+        mergeFromTo(compare3, fromOrdering, xs2, xs1, from2, mid);
       if (to - mid > 1)
-        mergeFromTo(compare2, fromOrdering, xs2, xs1, mid, to);
+        mergeFromTo(compare3, fromOrdering, xs2, xs1, mid, to);
       i2 = from2;
       j = mid;
       k = from2;
       while (i2 < mid && j < to) {
         x = xs2[i2];
         y = xs2[j];
-        c = fromOrdering(compare2(x)(y));
+        c = fromOrdering(compare3(x)(y));
         if (c > 0) {
           xs1[k++] = y;
           ++j;
@@ -1430,13 +1430,13 @@
         xs1[k++] = xs2[j++];
       }
     }
-    return function(compare2) {
+    return function(compare3) {
       return function(fromOrdering) {
         return function(xs) {
           return function() {
             if (xs.length < 2)
               return xs;
-            mergeFromTo(compare2, fromOrdering, xs, xs.slice(0), 0, xs.length);
+            mergeFromTo(compare3, fromOrdering, xs, xs.slice(0), 0, xs.length);
             return xs;
           };
         };
@@ -1628,7 +1628,7 @@
     };
   };
   var ordTuple = function(dictOrd) {
-    var compare2 = compare(dictOrd);
+    var compare3 = compare(dictOrd);
     var eqTuple1 = eqTuple(dictOrd.Eq0());
     return function(dictOrd1) {
       var compare12 = compare(dictOrd1);
@@ -1636,7 +1636,7 @@
       return {
         compare: function(x) {
           return function(y) {
-            var v = compare2(x.value0)(y.value0);
+            var v = compare3(x.value0)(y.value0);
             if (v instanceof LT) {
               return LT.value;
             }
@@ -1804,7 +1804,7 @@
       };
     }
     return function(apply2) {
-      return function(map25) {
+      return function(map26) {
         return function(pure14) {
           return function(f) {
             return function(array) {
@@ -1813,14 +1813,14 @@
                   case 0:
                     return pure14([]);
                   case 1:
-                    return map25(array1)(f(array[bot]));
+                    return map26(array1)(f(array[bot]));
                   case 2:
-                    return apply2(map25(array2)(f(array[bot])))(f(array[bot + 1]));
+                    return apply2(map26(array2)(f(array[bot])))(f(array[bot + 1]));
                   case 3:
-                    return apply2(apply2(map25(array3)(f(array[bot])))(f(array[bot + 1])))(f(array[bot + 2]));
+                    return apply2(apply2(map26(array3)(f(array[bot])))(f(array[bot + 1])))(f(array[bot + 2]));
                   default:
                     var pivot = bot + Math.floor((top3 - bot) / 4) * 2;
-                    return apply2(map25(concat22)(go2(bot, pivot)))(go2(pivot, top3));
+                    return apply2(map26(concat22)(go2(bot, pivot)))(go2(pivot, top3));
                 }
               }
               return go2(0, array.length);
@@ -1963,10 +1963,10 @@
       return arr;
     }
     return function(apply2) {
-      return function(map25) {
+      return function(map26) {
         return function(f) {
           var buildFrom = function(x, ys) {
-            return apply2(map25(consList)(f(x)))(ys);
+            return apply2(map26(consList)(f(x)))(ys);
           };
           var go2 = function(acc, currentLen, xs) {
             if (currentLen === 0) {
@@ -1980,12 +1980,12 @@
             }
           };
           return function(array) {
-            var acc = map25(finalCell)(f(array[array.length - 1]));
+            var acc = map26(finalCell)(f(array[array.length - 1]));
             var result = go2(acc, array.length - 1, array);
             while (result instanceof Cont) {
               result = result.fn();
             }
-            return map25(listToArray)(result);
+            return map26(listToArray)(result);
           };
         };
       };
@@ -2020,9 +2020,9 @@
     return NonEmpty2;
   }();
   var singleton2 = function(dictPlus) {
-    var empty7 = empty(dictPlus);
+    var empty8 = empty(dictPlus);
     return function(a2) {
-      return new NonEmpty(a2, empty7);
+      return new NonEmpty(a2, empty8);
     };
   };
 
@@ -2482,6 +2482,7 @@
   };
 
   // output/Component.Animation/index.js
+  var compare2 = /* @__PURE__ */ compare(ordInt);
   var startTick = 1;
   var proportionalTick = function(dictMonadReader) {
     var MonadAsk0 = dictMonadReader.MonadAsk0();
@@ -2500,7 +2501,7 @@
         });
       }
       ;
-      throw new Error("Failed pattern match at Component.Animation (line 27, column 1 - line 27, column 74): " + [v.constructor.name]);
+      throw new Error("Failed pattern match at Component.Animation (line 29, column 1 - line 29, column 74): " + [v.constructor.name]);
     };
   };
   var interpolate = function(dictMonadReader) {
@@ -2522,11 +2523,11 @@
   };
   var sinInterpolate = function(dictMonadReader) {
     return interpolate(dictMonadReader)(function() {
-      var $62 = flip(pow2)(2);
-      return function($63) {
-        return $62(sin(function(x) {
+      var $76 = flip(pow2)(2);
+      return function($77) {
+        return $76(sin(function(x) {
           return pi * x - pi / 4;
-        }($63)));
+        }($77)));
       };
     }());
   };
@@ -2538,16 +2539,33 @@
       return x * 2 - 1;
     };
     var cbrt = function(x) {
-      var $58 = x >= 0;
-      if ($58) {
+      var $68 = x >= 0;
+      if ($68) {
         return pow2(x)(0.5);
       }
       ;
       return -1 * pow2(-x)(0.5);
     };
-    return interpolate(dictMonadReader)(function($64) {
-      return unstretch(cbrt(stretch($64)));
+    return interpolate(dictMonadReader)(function($78) {
+      return unstretch(cbrt(stretch($78)));
     });
+  };
+  var eqTick = {
+    eq: function(x) {
+      return function(y) {
+        return x === y;
+      };
+    }
+  };
+  var ordTick = {
+    compare: function(x) {
+      return function(y) {
+        return compare2(x)(y);
+      };
+    },
+    Eq0: function() {
+      return eqTick;
+    }
   };
   var atMax = function(dictMonadReader) {
     var MonadAsk0 = dictMonadReader.MonadAsk0();
@@ -2576,7 +2594,7 @@
           return pure14(new Just(v + 1 | 0));
         }
         ;
-        throw new Error("Failed pattern match at Component.Animation (line 18, column 3 - line 20, column 40): " + [maxxed.constructor.name]);
+        throw new Error("Failed pattern match at Component.Animation (line 20, column 3 - line 22, column 40): " + [maxxed.constructor.name]);
       });
     };
   };
@@ -3574,7 +3592,7 @@
     return KickUp2;
   }();
   var lookup = function(dictOrd) {
-    var compare2 = compare(dictOrd);
+    var compare3 = compare(dictOrd);
     return function(k) {
       var go2 = function($copy_v) {
         var $tco_done = false;
@@ -3586,7 +3604,7 @@
           }
           ;
           if (v instanceof Two) {
-            var v2 = compare2(k)(v.value1);
+            var v2 = compare3(k)(v.value1);
             if (v2 instanceof EQ) {
               $tco_done = true;
               return new Just(v.value2);
@@ -3602,13 +3620,13 @@
           }
           ;
           if (v instanceof Three) {
-            var v3 = compare2(k)(v.value1);
+            var v3 = compare3(k)(v.value1);
             if (v3 instanceof EQ) {
               $tco_done = true;
               return new Just(v.value2);
             }
             ;
-            var v4 = compare2(k)(v.value4);
+            var v4 = compare3(k)(v.value4);
             if (v4 instanceof EQ) {
               $tco_done = true;
               return new Just(v.value5);
@@ -3638,6 +3656,14 @@
         return $tco_result;
       };
       return go2;
+    };
+  };
+  var member = function(dictOrd) {
+    var lookup13 = lookup(dictOrd);
+    return function(k) {
+      return function(m) {
+        return isJust(lookup13(k)(m));
+      };
     };
   };
   var fromZipper = function($copy_dictOrd) {
@@ -3705,7 +3731,7 @@
   };
   var insert2 = function(dictOrd) {
     var fromZipper1 = fromZipper(dictOrd);
-    var compare2 = compare(dictOrd);
+    var compare3 = compare(dictOrd);
     return function(k) {
       return function(v) {
         var up = function($copy_v1) {
@@ -3773,7 +3799,7 @@
               }
               ;
               if (v2 instanceof Two) {
-                var v3 = compare2(k)(v2.value1);
+                var v3 = compare3(k)(v2.value1);
                 if (v3 instanceof EQ) {
                   $tco_done1 = true;
                   return fromZipper1(v1)(new Two(v2.value0, k, v, v2.value3));
@@ -3791,13 +3817,13 @@
               }
               ;
               if (v2 instanceof Three) {
-                var v3 = compare2(k)(v2.value1);
+                var v3 = compare3(k)(v2.value1);
                 if (v3 instanceof EQ) {
                   $tco_done1 = true;
                   return fromZipper1(v1)(new Three(v2.value0, k, v, v2.value3, v2.value4, v2.value5, v2.value6));
                 }
                 ;
-                var v4 = compare2(k)(v2.value4);
+                var v4 = compare3(k)(v2.value4);
                 if (v4 instanceof EQ) {
                   $tco_done1 = true;
                   return fromZipper1(v1)(new Three(v2.value0, v2.value1, v2.value2, v2.value3, k, v, v2.value6));
@@ -3836,7 +3862,7 @@
   };
   var pop = function(dictOrd) {
     var fromZipper1 = fromZipper(dictOrd);
-    var compare2 = compare(dictOrd);
+    var compare3 = compare(dictOrd);
     return function(k) {
       var up = function($copy_ctxs) {
         return function($copy_tree) {
@@ -4042,16 +4068,16 @@
             }
             ;
             if (m instanceof Two) {
-              var v = compare2(k)(m.value1);
+              var v = compare3(k)(m.value1);
               if (m.value3 instanceof Leaf && v instanceof EQ) {
                 $tco_done3 = true;
                 return new Just(new Tuple(m.value2, up(ctx)(Leaf.value)));
               }
               ;
               if (v instanceof EQ) {
-                var max6 = maxNode(m.value0);
+                var max7 = maxNode(m.value0);
                 $tco_done3 = true;
-                return new Just(new Tuple(m.value2, removeMaxNode(new Cons(new TwoLeft(max6.key, max6.value, m.value3), ctx))(m.value0)));
+                return new Just(new Tuple(m.value2, removeMaxNode(new Cons(new TwoLeft(max7.key, max7.value, m.value3), ctx))(m.value0)));
               }
               ;
               if (v instanceof LT) {
@@ -4073,8 +4099,8 @@
                 ;
                 return false;
               }();
-              var v = compare2(k)(m.value4);
-              var v3 = compare2(k)(m.value1);
+              var v = compare3(k)(m.value4);
+              var v3 = compare3(k)(m.value1);
               if (leaves && v3 instanceof EQ) {
                 $tco_done3 = true;
                 return new Just(new Tuple(m.value2, fromZipper1(ctx)(new Two(Leaf.value, m.value4, m.value5, Leaf.value))));
@@ -4086,15 +4112,15 @@
               }
               ;
               if (v3 instanceof EQ) {
-                var max6 = maxNode(m.value0);
+                var max7 = maxNode(m.value0);
                 $tco_done3 = true;
-                return new Just(new Tuple(m.value2, removeMaxNode(new Cons(new ThreeLeft(max6.key, max6.value, m.value3, m.value4, m.value5, m.value6), ctx))(m.value0)));
+                return new Just(new Tuple(m.value2, removeMaxNode(new Cons(new ThreeLeft(max7.key, max7.value, m.value3, m.value4, m.value5, m.value6), ctx))(m.value0)));
               }
               ;
               if (v instanceof EQ) {
-                var max6 = maxNode(m.value3);
+                var max7 = maxNode(m.value3);
                 $tco_done3 = true;
-                return new Just(new Tuple(m.value5, removeMaxNode(new Cons(new ThreeMiddle(m.value0, m.value1, m.value2, max6.key, max6.value, m.value6), ctx))(m.value3)));
+                return new Just(new Tuple(m.value5, removeMaxNode(new Cons(new ThreeMiddle(m.value0, m.value1, m.value2, max7.key, max7.value, m.value6), ctx))(m.value3)));
               }
               ;
               if (v3 instanceof LT) {
@@ -4192,11 +4218,11 @@
     return Leaf.value;
   }();
   var fromFoldable3 = function(dictOrd) {
-    var insert13 = insert2(dictOrd);
+    var insert14 = insert2(dictOrd);
     return function(dictFoldable) {
       return foldl(dictFoldable)(function(m) {
         return function(v) {
-          return insert13(v.value0)(v.value1)(m);
+          return insert14(v.value0)(v.value1)(m);
         };
       })(empty2);
     };
@@ -4212,7 +4238,7 @@
   var alter = function(dictOrd) {
     var lookup13 = lookup(dictOrd);
     var delete1 = $$delete2(dictOrd);
-    var insert13 = insert2(dictOrd);
+    var insert14 = insert2(dictOrd);
     return function(f) {
       return function(k) {
         return function(m) {
@@ -4222,7 +4248,7 @@
           }
           ;
           if (v instanceof Just) {
-            return insert13(k)(v.value0)(m);
+            return insert14(k)(v.value0)(m);
           }
           ;
           throw new Error("Failed pattern match at Data.Map.Internal (line 596, column 15 - line 598, column 25): " + [v.constructor.name]);
@@ -4540,10 +4566,10 @@
   var $$try = function(dictMonadError) {
     var catchError1 = catchError(dictMonadError);
     var Monad0 = dictMonadError.MonadThrow0().Monad0();
-    var map25 = map(Monad0.Bind1().Apply0().Functor0());
+    var map26 = map(Monad0.Bind1().Apply0().Functor0());
     var pure14 = pure(Monad0.Applicative0());
     return function(a2) {
-      return catchError1(map25(Right.create)(a2))(function($52) {
+      return catchError1(map26(Right.create)(a2))(function($52) {
         return pure14(Left.create($52));
       });
     };
@@ -4694,6 +4720,25 @@
     };
   };
 
+  // output/Data.Set/index.js
+  var member2 = function(dictOrd) {
+    var member1 = member(dictOrd);
+    return function(a2) {
+      return function(v) {
+        return member1(a2)(v);
+      };
+    };
+  };
+  var insert3 = function(dictOrd) {
+    var insert14 = insert2(dictOrd);
+    return function(a2) {
+      return function(v) {
+        return insert14(a2)(unit)(v);
+      };
+    };
+  };
+  var empty3 = empty2;
+
   // output/Effect.Aff/foreign.js
   var Aff = function() {
     var EMPTY = {};
@@ -4759,15 +4804,15 @@
     }
     var Scheduler = function() {
       var limit = 1024;
-      var size4 = 0;
+      var size5 = 0;
       var ix = 0;
       var queue = new Array(limit);
       var draining = false;
       function drain() {
         var thunk;
         draining = true;
-        while (size4 !== 0) {
-          size4--;
+        while (size5 !== 0) {
+          size5--;
           thunk = queue[ix];
           queue[ix] = void 0;
           ix = (ix + 1) % limit;
@@ -4781,13 +4826,13 @@
         },
         enqueue: function(cb) {
           var i2, tmp;
-          if (size4 === limit) {
+          if (size5 === limit) {
             tmp = draining;
             drain();
             draining = tmp;
           }
-          queue[(ix + size4) % limit] = cb;
-          size4++;
+          queue[(ix + size5) % limit] = cb;
+          size5++;
           if (!draining) {
             drain();
           }
@@ -5967,6 +6012,9 @@
   var nonCanceler = /* @__PURE__ */ $$const(/* @__PURE__ */ pure22(unit));
 
   // output/Graphics.Canvas/foreign.js
+  function canvasElementToImageSource(e) {
+    return e;
+  }
   function getCanvasElementByIdImpl(id3, Just2, Nothing2) {
     return function() {
       var el = document.getElementById(id3);
@@ -6010,13 +6058,6 @@
     return function(style2) {
       return function() {
         ctx.strokeStyle = style2;
-      };
-    };
-  }
-  function setGlobalAlpha(ctx) {
-    return function(alpha) {
-      return function() {
-        ctx.globalAlpha = alpha;
       };
     };
   }
@@ -6069,6 +6110,17 @@
     return function(r) {
       return function() {
         ctx.clearRect(r.x, r.y, r.width, r.height);
+      };
+    };
+  }
+  function drawImage(ctx) {
+    return function(image_source) {
+      return function(dx) {
+        return function(dy) {
+          return function() {
+            ctx.drawImage(image_source, dx, dy);
+          };
+        };
       };
     };
   }
@@ -6204,7 +6256,7 @@
       };
     };
   };
-  var insert3 = function() {
+  var insert4 = function() {
     return function(dictIsSymbol) {
       var reflectSymbol2 = reflectSymbol(dictIsSymbol);
       return function(dictOrd) {
@@ -6231,7 +6283,7 @@
       };
     };
   };
-  var empty3 = empty2;
+  var empty4 = empty2;
 
   // output/DOM.HTML.Indexed.ButtonType/index.js
   var ButtonButton = /* @__PURE__ */ function() {
@@ -7300,7 +7352,7 @@
       return r;
     };
   }
-  var keys = Object.keys || toArrayWithKey(function(k) {
+  var keys2 = Object.keys || toArrayWithKey(function(k) {
     return function() {
       return k;
     };
@@ -7956,7 +8008,7 @@
     ;
     return false;
   };
-  var empty5 = /* @__PURE__ */ function() {
+  var empty6 = /* @__PURE__ */ function() {
     return new CatQueue(Nil.value, Nil.value);
   }();
 
@@ -8001,7 +8053,7 @@
   var foldr3 = function(k) {
     return function(b2) {
       return function(q2) {
-        var foldl6 = function($copy_v) {
+        var foldl7 = function($copy_v) {
           return function($copy_v1) {
             return function($copy_v2) {
               var $tco_var_v = $copy_v;
@@ -8041,7 +8093,7 @@
               var v = uncons4(xs);
               if (v instanceof Nothing) {
                 $tco_done1 = true;
-                return foldl6(function(x) {
+                return foldl7(function(x) {
                   return function(i2) {
                     return i2(x);
                   };
@@ -8086,7 +8138,7 @@
     ;
     throw new Error("Failed pattern match at Data.CatList (line 99, column 1 - line 99, column 61): " + [v.constructor.name]);
   };
-  var empty6 = /* @__PURE__ */ function() {
+  var empty7 = /* @__PURE__ */ function() {
     return CatNil.value;
   }();
   var append3 = link;
@@ -8095,7 +8147,7 @@
   };
   var snoc4 = function(cat) {
     return function(a2) {
-      return append3(cat)(new CatCons(a2, empty5));
+      return append3(cat)(new CatCons(a2, empty6));
     };
   };
 
@@ -8195,7 +8247,7 @@
     return $tco_result;
   };
   var fromView = function(f) {
-    return new Free(f, empty6);
+    return new Free(f, empty7);
   };
   var freeMonad = {
     Applicative0: function() {
@@ -8660,7 +8712,7 @@
   var pure5 = /* @__PURE__ */ pure(applicativeHalogenM);
   var lookup5 = /* @__PURE__ */ lookup2();
   var pop3 = /* @__PURE__ */ pop2();
-  var insert4 = /* @__PURE__ */ insert3();
+  var insert5 = /* @__PURE__ */ insert4();
   var ComponentSlot = /* @__PURE__ */ function() {
     function ComponentSlot2(value0) {
       this.value0 = value0;
@@ -8728,11 +8780,11 @@
     return function(dictIsSymbol) {
       var lookup13 = lookup5(dictIsSymbol);
       var pop12 = pop3(dictIsSymbol);
-      var insert13 = insert4(dictIsSymbol);
+      var insert14 = insert5(dictIsSymbol);
       return function(dictOrd) {
         var lookup23 = lookup13(dictOrd);
         var pop22 = pop12(dictOrd);
-        var insert22 = insert13(dictOrd);
+        var insert22 = insert14(dictOrd);
         return function(label5) {
           return function(p2) {
             return function(comp) {
@@ -8883,10 +8935,10 @@
       };
     };
   };
-  var toVector = function(max6) {
+  var toVector = function(max7) {
     return function(p2) {
       return function(x) {
-        var maxP = padicRep(p2)(max6);
+        var maxP = padicRep(p2)(max7);
         var cl = toCoordList(length4(maxP))(p2)(x);
         return foldl5(function(acc) {
           return function(next) {
@@ -8908,19 +8960,25 @@
   var pure1 = /* @__PURE__ */ pure(applicativeEffect);
   var map15 = /* @__PURE__ */ map(functorList);
   var for_2 = /* @__PURE__ */ for_(applicativeEffect)(foldableList);
+  var show2 = /* @__PURE__ */ show(showInt);
   var monadReaderReaderT2 = /* @__PURE__ */ monadReaderReaderT(monadIdentity);
   var sqrtInterpolate2 = /* @__PURE__ */ sqrtInterpolate(monadReaderReaderT2);
   var sinInterpolate2 = /* @__PURE__ */ sinInterpolate(monadReaderReaderT2);
+  var map22 = /* @__PURE__ */ map(functorMaybe);
+  var member3 = /* @__PURE__ */ member2(ordTick);
   var sequence_2 = /* @__PURE__ */ sequence_(applicativeEffect)(foldableArray);
   var bind12 = /* @__PURE__ */ bind(bindHalogenM);
   var get2 = /* @__PURE__ */ get(monadStateHalogenM);
   var discard22 = /* @__PURE__ */ discard2(bindHalogenM);
   var modify_3 = /* @__PURE__ */ modify_2(monadStateHalogenM);
   var liftEffect3 = /* @__PURE__ */ liftEffect(/* @__PURE__ */ monadEffectHalogenM(monadEffectAff));
+  var insert6 = /* @__PURE__ */ insert3(ordTick);
   var pure23 = /* @__PURE__ */ pure(applicativeHalogenM);
   var composeKleisli2 = /* @__PURE__ */ composeKleisli(bindList);
   var fromFoldable6 = /* @__PURE__ */ fromFoldable(foldableList);
-  var insert5 = /* @__PURE__ */ insert2(ordInt);
+  var max3 = /* @__PURE__ */ max(ordInt);
+  var foldl6 = /* @__PURE__ */ foldl(foldableList);
+  var insert12 = /* @__PURE__ */ insert2(ordInt);
   var applySecond22 = /* @__PURE__ */ applySecond(applyHalogenM);
   var bind32 = /* @__PURE__ */ bind(bindMaybe);
   var incTick2 = /* @__PURE__ */ incTick(monadReaderReaderT2);
@@ -9113,10 +9171,11 @@
         return PadicVector.value;
       }
       ;
-      throw new Error("Failed pattern match at Component.Canvas (line 345, column 17 - line 347, column 32): " + [model.coordType.constructor.name]);
+      throw new Error("Failed pattern match at Component.Canvas (line 360, column 17 - line 362, column 32): " + [model.coordType.constructor.name]);
     }();
     return {
       maxInt: model.maxInt,
+      maxValue: model.maxValue,
       power: model.power,
       norm: model.norm,
       bubbles: model.bubbles,
@@ -9125,6 +9184,7 @@
       coordType: newRepr,
       cache: model.cache,
       colorCache: model.colorCache,
+      drawnBuffers: model.drawnBuffers,
       maxTick: model.maxTick,
       animate: model.animate,
       lines: model.lines,
@@ -9141,6 +9201,7 @@
   var toggleLines = function(model) {
     return {
       maxInt: model.maxInt,
+      maxValue: model.maxValue,
       power: model.power,
       norm: model.norm,
       bubbles: model.bubbles,
@@ -9149,6 +9210,7 @@
       coordType: model.coordType,
       cache: model.cache,
       colorCache: model.colorCache,
+      drawnBuffers: model.drawnBuffers,
       maxTick: model.maxTick,
       animate: model.animate,
       lines: !model.lines,
@@ -9165,6 +9227,7 @@
   var toggleAnimation = function(model) {
     return {
       maxInt: model.maxInt,
+      maxValue: model.maxValue,
       power: model.power,
       norm: model.norm,
       bubbles: model.bubbles,
@@ -9173,6 +9236,7 @@
       coordType: model.coordType,
       cache: model.cache,
       colorCache: model.colorCache,
+      drawnBuffers: model.drawnBuffers,
       maxTick: model.maxTick,
       animate: !model.animate,
       lines: model.lines,
@@ -9205,8 +9269,8 @@
   var mkColor = function(model) {
     return function(value12) {
       var step4 = 1 / toNumber(model.maxInt + 1 | 0);
-      var val = 1 - 0.5 * step4 * toNumber(value12);
-      var sat = 0.5 + 0.5 * step4 * toNumber(value12);
+      var val = 0.8 + 0.2 * step4 * toNumber(value12);
+      var sat = 0.2 + 0.8 * step4 * toNumber(value12);
       var p2 = fromMaybe(1)(getPrime(model.norm));
       var divisor = function() {
         if (model.coordType instanceof Circular) {
@@ -9217,7 +9281,7 @@
           return 1;
         }
         ;
-        throw new Error("Failed pattern match at Component.Canvas (line 173, column 17 - line 175, column 27): " + [model.coordType.constructor.name]);
+        throw new Error("Failed pattern match at Component.Canvas (line 178, column 17 - line 180, column 27): " + [model.coordType.constructor.name]);
       }();
       var pstep = step4 * divisor;
       var hue = 360 * pstep * toNumber(value12);
@@ -9230,6 +9294,7 @@
   var regenBubbles = function(model) {
     return {
       maxInt: model.maxInt,
+      maxValue: model.maxValue,
       power: model.power,
       norm: model.norm,
       bubbles: mkBubbles(model.maxInt),
@@ -9238,6 +9303,7 @@
       coordType: model.coordType,
       cache: model.cache,
       colorCache: model.colorCache,
+      drawnBuffers: model.drawnBuffers,
       maxTick: model.maxTick,
       animate: model.animate,
       lines: model.lines,
@@ -9257,12 +9323,14 @@
       power: input3.power,
       norm: input3.norm,
       maxInt,
+      maxValue: maxInt,
       bubbles: mkBubbles(maxInt),
       time: Nothing.value,
       size: input3.size,
       coordType: input3.coordType,
       cache: empty2,
       colorCache: empty2,
+      drawnBuffers: empty3,
       maxTick: input3.maxTick,
       animate: true,
       lines: false,
@@ -9278,7 +9346,7 @@
   };
   var getTheta = function(model) {
     return function(value12) {
-      return pi * 2 * toNumber(value12) / toNumber(model.maxInt + 1 | 0);
+      return pi * 2 * toNumber(value12) / toNumber(model.maxValue);
     };
   };
   var getSize = function(model) {
@@ -9287,12 +9355,12 @@
   var getR = function(model) {
     return function(value12) {
       var maxValue = function() {
-        var $83 = isPadic(model.norm);
-        if ($83) {
+        var $91 = isPadic(model.norm);
+        if ($91) {
           return 1;
         }
         ;
-        return pow(model.maxInt + 1 | 0)(2);
+        return model.maxValue;
       }();
       return div1(value12)(fromInt(maxValue));
     };
@@ -9310,18 +9378,18 @@
   var getPadicCoord = function(model) {
     return function(n) {
       var p2 = fromMaybe(0)(getPrime(model.norm));
-      return normalizeCoords(model)(toVector(pow(model.maxInt + 1 | 0)(3))(p2)(n));
+      return normalizeCoords(model)(toVector(model.maxValue)(p2)(n));
     };
   };
   var getCoordinates = function(interpolater) {
     return function(cache) {
-      return function(size4) {
+      return function(size5) {
         return function(v) {
           var $$new2 = fromMaybe(baseCoordinates)(lookup6(v.value1)(cache));
           var mold = lookup6(v.value0)(cache);
           var old = fromMaybe(addOffset(baseCoordinates)({
-            top: size4 / 2,
-            left: size4
+            top: size5 / 2,
+            left: size5
           }))(mold);
           return {
             x: interpolater($$new2.x)(old.x),
@@ -9331,11 +9399,9 @@
       };
     };
   };
-  var getColor = function(interpolater) {
-    return function(cache) {
-      return function(v) {
-        return fromMaybe("#000")(lookup6(v.value0)(cache));
-      };
+  var getColor = function(cache) {
+    return function(v) {
+      return fromMaybe("#000")(lookup6(v.value0)(cache));
     };
   };
   var getCircleCoord = function(model) {
@@ -9442,10 +9508,11 @@
           return 1;
         }
         ;
-        throw new Error("Failed pattern match at Component.Canvas (line 355, column 11 - line 357, column 17): " + [model.norm.constructor.name]);
+        throw new Error("Failed pattern match at Component.Canvas (line 370, column 11 - line 372, column 17): " + [model.norm.constructor.name]);
       }();
       return {
         maxInt: pow(x)(power) - 1 | 0,
+        maxValue: model.maxValue,
         power,
         norm: model.norm,
         bubbles: model.bubbles,
@@ -9454,6 +9521,7 @@
         coordType: model.coordType,
         cache: model.cache,
         colorCache: model.colorCache,
+        drawnBuffers: model.drawnBuffers,
         maxTick: model.maxTick,
         animate: model.animate,
         lines: model.lines,
@@ -9469,6 +9537,9 @@
     };
   };
   var canvasId = "bubble-canvas";
+  var canvasForTick = function(v) {
+    return canvasId + ("-" + show2(v));
+  };
   var redraw = function(model) {
     var sqrtInterp = runReader(sqrtInterpolate2(model.time))(model.maxTick);
     var sinInterp = runReader(sinInterpolate2(model.time))(model.maxTick);
@@ -9478,7 +9549,8 @@
       };
     })(model.cache)(toNumber(getSize(model)));
     var coordGetter = getCoordinates(sqrtInterp)(model.cache)(toNumber(getSize(model)));
-    var colorGetter = getColor(sqrtInterp)(model.colorCache);
+    var colorGetter = getColor(model.colorCache);
+    var canvasName = canvasForTick(fromMaybe(0)(model.time));
     var alpha = sinInterp(0.6)(0.15);
     return function __do2() {
       var mcanvas = getCanvasElementById(canvasId)();
@@ -9488,65 +9560,104 @@
       ;
       if (mcanvas instanceof Just) {
         var ctx = getContext2D(mcanvas.value0)();
-        var dim = getCanvasDimensions(mcanvas.value0)();
-        clearRect(ctx)({
-          x: 0,
-          y: 0,
-          width: dim.width,
-          height: dim.height
-        })();
-        setGlobalAlpha(ctx)(alpha)();
-        sequence_2(mapWithIndex(function(idx) {
-          return function(vs) {
-            return drawBubbles(ctx)(model)(oldCoordGetter)(coordGetter)(colorGetter)(model.radius)(new Tuple(idx, vs));
-          };
-        })(model.bubbles))();
-        return unit;
+        var mbuffer = getCanvasElementById(canvasName)();
+        if (mbuffer instanceof Nothing) {
+          return unit;
+        }
+        ;
+        if (mbuffer instanceof Just) {
+          var dim = getCanvasDimensions(mcanvas.value0)();
+          clearRect(ctx)({
+            x: 0,
+            y: 0,
+            width: dim.width,
+            height: dim.height
+          })();
+          var $115 = fromMaybe(false)(map22(flip(member3)(model.drawnBuffers))(model.time));
+          if ($115) {
+            return drawImage(ctx)(canvasElementToImageSource(mbuffer.value0))(0)(0)();
+          }
+          ;
+          sequence_2(mapWithIndex(function(idx) {
+            return function(vs) {
+              return drawBubbles(ctx)(model)(oldCoordGetter)(coordGetter)(colorGetter)(model.radius)(new Tuple(idx, vs));
+            };
+          })(model.bubbles))();
+          var bufferCtx = getContext2D(mbuffer.value0)();
+          clearRect(bufferCtx)({
+            x: 0,
+            y: 0,
+            width: dim.width,
+            height: dim.height
+          })();
+          drawImage(bufferCtx)(canvasElementToImageSource(mcanvas.value0))(0)(0)();
+          return unit;
+        }
+        ;
+        throw new Error("Failed pattern match at Component.Canvas (line 395, column 9 - line 409, column 26): " + [mbuffer.constructor.name]);
       }
       ;
-      throw new Error("Failed pattern match at Component.Canvas (line 371, column 5 - line 380, column 18): " + [mcanvas.constructor.name]);
+      throw new Error("Failed pattern match at Component.Canvas (line 390, column 5 - line 409, column 26): " + [mcanvas.constructor.name]);
     };
   };
   var redrawStep = /* @__PURE__ */ bind12(get2)(function(model) {
     return discard22(modify_3(function(v) {
-      var $107 = {};
-      for (var $108 in v) {
-        if ({}.hasOwnProperty.call(v, $108)) {
-          $107[$108] = v[$108];
+      var $118 = {};
+      for (var $119 in v) {
+        if ({}.hasOwnProperty.call(v, $119)) {
+          $118[$119] = v[$119];
         }
         ;
       }
       ;
-      $107.animate = false;
-      return $107;
+      $118.animate = false;
+      return $118;
     }))(function() {
       return discard22(liftEffect3(redraw(model)))(function() {
         return discard22(modify_3(function(v) {
-          var $110 = {};
-          for (var $111 in v) {
-            if ({}.hasOwnProperty.call(v, $111)) {
-              $110[$111] = v[$111];
+          var $121 = {};
+          for (var $122 in v) {
+            if ({}.hasOwnProperty.call(v, $122)) {
+              $121[$122] = v[$122];
             }
             ;
           }
           ;
-          $110.animate = true;
-          return $110;
+          $121.drawnBuffers = insert6(fromMaybe(0)(model.time))(model.drawnBuffers);
+          return $121;
         }))(function() {
-          return pure23(unit);
+          return discard22(modify_3(function(v) {
+            var $124 = {};
+            for (var $125 in v) {
+              if ({}.hasOwnProperty.call(v, $125)) {
+                $124[$125] = v[$125];
+              }
+              ;
+            }
+            ;
+            $124.animate = true;
+            return $124;
+          }))(function() {
+            return pure23(unit);
+          });
         });
       });
     });
   });
+  var bufferCanvas = function(size5) {
+    return function(i2) {
+      return canvas([id2(canvasForTick(i2)), width(size5), height(size5), class_("buffer-canvas")]);
+    };
+  };
   var render = function(model) {
-    var size4 = getSize(model);
-    return canvas([width(size4), height(size4), id2(canvasId)]);
+    var size5 = getSize(model);
+    return div4([id2("animation-station")])([canvas([width(size5), height(size5), id2(canvasId)]), div4([id2("buffer-canvases")])(map14(bufferCanvas(size5))(range(0)(model.maxInt)))]);
   };
   var bubbleFn = function(model) {
     var base2 = function() {
-      var $173 = cubeBy(model.cubeCoeff)(model.quadCoeff)(model.multBy)(model.addTo);
-      return function($174) {
-        return singleton5($173($174));
+      var $187 = cubeBy(model.cubeCoeff)(model.quadCoeff)(model.multBy)(model.addTo);
+      return function($188) {
+        return singleton5($187($188));
       };
     }();
     var sqrted = function() {
@@ -9585,6 +9696,7 @@
     var newBubbles = newBubblesST(model.bubbles)();
     return {
       maxInt: model.maxInt,
+      maxValue: model.maxValue,
       power: model.power,
       norm: model.norm,
       bubbles: newBubbles,
@@ -9593,6 +9705,7 @@
       coordType: model.coordType,
       cache: model.cache,
       colorCache: model.colorCache,
+      drawnBuffers: model.drawnBuffers,
       maxTick: model.maxTick,
       animate: model.animate,
       lines: model.lines,
@@ -9612,18 +9725,23 @@
         var outputInts = filter(function(x) {
           return x > model.maxInt;
         })(concatMap(fromFoldable6)(model.bubbles));
+        var maxValue = foldl2(function(acc) {
+          return function(l) {
+            return max3(acc)(foldl6(max3)(0)(l));
+          };
+        })(0)(model.bubbles);
         var inputInts = range(0)(model.maxInt);
         var ints = concat([inputInts, outputInts]);
         var colorCache = foldl2(function(acc) {
           return function(x) {
-            return insert5(x)(mkColor(model)(x))(acc);
+            return insert12(x)(mkColor(model)(x))(acc);
           };
         })(empty2)(ints);
         var cache = function() {
           if (model.coordType instanceof Circular) {
             return foldl2(function(acc) {
               return function(x) {
-                return insert5(x)(getCircleCoord(model)(x))(acc);
+                return insert12(x)(getCircleCoord(model)(x))(acc);
               };
             })(empty2)(ints);
           }
@@ -9631,25 +9749,27 @@
           if (model.coordType instanceof PadicVector) {
             return foldl2(function(acc) {
               return function(x) {
-                return insert5(x)(getPadicCoord(model)(x))(acc);
+                return insert12(x)(getPadicCoord(model)(x))(acc);
               };
             })(empty2)(ints);
           }
           ;
-          throw new Error("Failed pattern match at Component.Canvas (line 324, column 15 - line 328, column 85): " + [model.coordType.constructor.name]);
+          throw new Error("Failed pattern match at Component.Canvas (line 337, column 15 - line 341, column 85): " + [model.coordType.constructor.name]);
         }();
         return discard22(modify_3(function(v) {
-          var $116 = {};
-          for (var $117 in v) {
-            if ({}.hasOwnProperty.call(v, $117)) {
-              $116[$117] = v[$117];
+          var $130 = {};
+          for (var $131 in v) {
+            if ({}.hasOwnProperty.call(v, $131)) {
+              $130[$131] = v[$131];
             }
             ;
           }
           ;
-          $116.cache = cache;
-          $116.colorCache = colorCache;
-          return $116;
+          $130.cache = cache;
+          $130.colorCache = colorCache;
+          $130.maxValue = maxValue;
+          $130.drawnBuffers = empty3;
+          return $130;
         }))(function() {
           return discard22(liftEffect3(redraw(model)))(function() {
             return pure23(unit);
@@ -9665,152 +9785,152 @@
     ;
     if (v instanceof ChangeNorm) {
       return applySecond22(modify_3(function(v1) {
-        var $121 = {};
-        for (var $122 in v1) {
-          if ({}.hasOwnProperty.call(v1, $122)) {
-            $121[$122] = v1[$122];
+        var $135 = {};
+        for (var $136 in v1) {
+          if ({}.hasOwnProperty.call(v1, $136)) {
+            $135[$136] = v1[$136];
           }
           ;
         }
         ;
-        $121.norm = v.value0;
-        return $121;
+        $135.norm = v.value0;
+        return $135;
       }))(reinitCache);
     }
     ;
     if (v instanceof ChangeTick) {
       return applySecond22(modify_3(function(v1) {
-        var $125 = {};
-        for (var $126 in v1) {
-          if ({}.hasOwnProperty.call(v1, $126)) {
-            $125[$126] = v1[$126];
+        var $139 = {};
+        for (var $140 in v1) {
+          if ({}.hasOwnProperty.call(v1, $140)) {
+            $139[$140] = v1[$140];
           }
           ;
         }
         ;
-        $125.maxTick = v.value0;
-        return $125;
-      }))(pure23(unit));
+        $139.maxTick = v.value0;
+        return $139;
+      }))(reinitCache);
     }
     ;
     if (v instanceof ChangeAddTo) {
       return applySecond22(modify_3(function(v1) {
-        var $129 = {};
-        for (var $130 in v1) {
-          if ({}.hasOwnProperty.call(v1, $130)) {
-            $129[$130] = v1[$130];
+        var $143 = {};
+        for (var $144 in v1) {
+          if ({}.hasOwnProperty.call(v1, $144)) {
+            $143[$144] = v1[$144];
           }
           ;
         }
         ;
-        $129.addTo = v.value0;
-        return $129;
+        $143.addTo = v.value0;
+        return $143;
       }))(reinitCache);
     }
     ;
     if (v instanceof ChangeMultBy) {
       return applySecond22(modify_3(function(v1) {
-        var $133 = {};
-        for (var $134 in v1) {
-          if ({}.hasOwnProperty.call(v1, $134)) {
-            $133[$134] = v1[$134];
+        var $147 = {};
+        for (var $148 in v1) {
+          if ({}.hasOwnProperty.call(v1, $148)) {
+            $147[$148] = v1[$148];
           }
           ;
         }
         ;
-        $133.multBy = v.value0;
-        return $133;
+        $147.multBy = v.value0;
+        return $147;
       }))(reinitCache);
     }
     ;
     if (v instanceof ChangeQuadBy) {
       return applySecond22(modify_3(function(v1) {
-        var $137 = {};
-        for (var $138 in v1) {
-          if ({}.hasOwnProperty.call(v1, $138)) {
-            $137[$138] = v1[$138];
+        var $151 = {};
+        for (var $152 in v1) {
+          if ({}.hasOwnProperty.call(v1, $152)) {
+            $151[$152] = v1[$152];
           }
           ;
         }
         ;
-        $137.quadCoeff = v.value0;
-        return $137;
+        $151.quadCoeff = v.value0;
+        return $151;
       }))(reinitCache);
     }
     ;
     if (v instanceof ChangeCubeBy) {
       return applySecond22(modify_3(function(v1) {
-        var $141 = {};
-        for (var $142 in v1) {
-          if ({}.hasOwnProperty.call(v1, $142)) {
-            $141[$142] = v1[$142];
+        var $155 = {};
+        for (var $156 in v1) {
+          if ({}.hasOwnProperty.call(v1, $156)) {
+            $155[$156] = v1[$156];
           }
           ;
         }
         ;
-        $141.cubeCoeff = v.value0;
-        return $141;
+        $155.cubeCoeff = v.value0;
+        return $155;
       }))(reinitCache);
     }
     ;
     if (v instanceof ChangeSqrt) {
       return applySecond22(modify_3(function(v1) {
-        var $145 = {};
-        for (var $146 in v1) {
-          if ({}.hasOwnProperty.call(v1, $146)) {
-            $145[$146] = v1[$146];
+        var $159 = {};
+        for (var $160 in v1) {
+          if ({}.hasOwnProperty.call(v1, $160)) {
+            $159[$160] = v1[$160];
           }
           ;
         }
         ;
-        $145.sqrt = v.value0;
-        return $145;
+        $159.sqrt = v.value0;
+        return $159;
       }))(reinitCache);
     }
     ;
     if (v instanceof ChangeCbrt) {
       return applySecond22(modify_3(function(v1) {
-        var $149 = {};
-        for (var $150 in v1) {
-          if ({}.hasOwnProperty.call(v1, $150)) {
-            $149[$150] = v1[$150];
+        var $163 = {};
+        for (var $164 in v1) {
+          if ({}.hasOwnProperty.call(v1, $164)) {
+            $163[$164] = v1[$164];
           }
           ;
         }
         ;
-        $149.cbrt = v.value0;
-        return $149;
+        $163.cbrt = v.value0;
+        return $163;
       }))(reinitCache);
     }
     ;
     if (v instanceof ChangeScale) {
       return applySecond22(modify_3(function(v1) {
-        var $153 = {};
-        for (var $154 in v1) {
-          if ({}.hasOwnProperty.call(v1, $154)) {
-            $153[$154] = v1[$154];
+        var $167 = {};
+        for (var $168 in v1) {
+          if ({}.hasOwnProperty.call(v1, $168)) {
+            $167[$168] = v1[$168];
           }
           ;
         }
         ;
-        $153.scale = v.value0;
-        return $153;
+        $167.scale = v.value0;
+        return $167;
       }))(reinitCache);
     }
     ;
     if (v instanceof ChangeRadius) {
       return applySecond22(modify_3(function(v1) {
-        var $157 = {};
-        for (var $158 in v1) {
-          if ({}.hasOwnProperty.call(v1, $158)) {
-            $157[$158] = v1[$158];
+        var $171 = {};
+        for (var $172 in v1) {
+          if ({}.hasOwnProperty.call(v1, $172)) {
+            $171[$172] = v1[$172];
           }
           ;
         }
         ;
-        $157.radius = v.value0;
-        return $157;
-      }))(pure23(unit));
+        $171.radius = v.value0;
+        return $171;
+      }))(reinitCache);
     }
     ;
     if (v instanceof ToggleRepr) {
@@ -9818,7 +9938,7 @@
     }
     ;
     if (v instanceof ToggleLines) {
-      return applySecond22(modify_3(toggleLines))(pure23(unit));
+      return applySecond22(modify_3(toggleLines))(reinitCache);
     }
     ;
     if (v instanceof ToggleAnimation) {
@@ -9839,16 +9959,16 @@
           });
           if (newTick instanceof Just) {
             return discard22(modify_3(function(v1) {
-              var $163 = {};
-              for (var $164 in v1) {
-                if ({}.hasOwnProperty.call(v1, $164)) {
-                  $163[$164] = v1[$164];
+              var $177 = {};
+              for (var $178 in v1) {
+                if ({}.hasOwnProperty.call(v1, $178)) {
+                  $177[$178] = v1[$178];
                 }
                 ;
               }
               ;
-              $163.time = newTick;
-              return $163;
+              $177.time = newTick;
+              return $177;
             }))(function() {
               return discard22(redrawStep)(function() {
                 return pure23(unit);
@@ -9858,16 +9978,16 @@
           ;
           if (newTick instanceof Nothing) {
             return discard22(modify_3(function(v1) {
-              var $167 = {};
-              for (var $168 in v1) {
-                if ({}.hasOwnProperty.call(v1, $168)) {
-                  $167[$168] = v1[$168];
+              var $181 = {};
+              for (var $182 in v1) {
+                if ({}.hasOwnProperty.call(v1, $182)) {
+                  $181[$182] = v1[$182];
                 }
                 ;
               }
               ;
-              $167.time = new Just(startTick);
-              return $167;
+              $181.time = new Just(startTick);
+              return $181;
             }))(function() {
               return discard22(redrawStep)(function() {
                 return pure23(unit);
@@ -9875,10 +9995,10 @@
             });
           }
           ;
-          throw new Error("Failed pattern match at Component.Canvas (line 426, column 7 - line 434, column 20): " + [newTick.constructor.name]);
+          throw new Error("Failed pattern match at Component.Canvas (line 456, column 7 - line 464, column 20): " + [newTick.constructor.name]);
         }
         ;
-        throw new Error("Failed pattern match at Component.Canvas (line 420, column 3 - line 434, column 20): " + [model.animate.constructor.name]);
+        throw new Error("Failed pattern match at Component.Canvas (line 450, column 3 - line 464, column 20): " + [model.animate.constructor.name]);
       });
     }
     ;
@@ -9894,7 +10014,7 @@
       });
     }
     ;
-    throw new Error("Failed pattern match at Component.Canvas (line 393, column 1 - line 393, column 84): " + [v.constructor.name]);
+    throw new Error("Failed pattern match at Component.Canvas (line 423, column 1 - line 423, column 84): " + [v.constructor.name]);
   };
   var handleQuery = function(v) {
     return applySecond22(handleAction(v.value0))(pure23(new Just(v.value1)));
@@ -10200,7 +10320,7 @@
   var type_4 = /* @__PURE__ */ type_(isPropInputType);
   var prop5 = /* @__PURE__ */ prop2(isPropInt);
   var type_1 = /* @__PURE__ */ type_(isPropButtonType);
-  var show2 = /* @__PURE__ */ show(showInt);
+  var show3 = /* @__PURE__ */ show(showInt);
   var SetNorm = /* @__PURE__ */ function() {
     function SetNorm2(value0) {
       this.value0 = value0;
@@ -10535,7 +10655,7 @@
         };
       };
     };
-    var renderSidebar = div4([class_("pure-u-1-4 sidebar")])([mkButton("Toggle Representation")("primary")(new Just("Between fractal given by the p-adic representation, or circles given by the p-adic norm"))(ToggleRepr2.value), mkButton("Toggle Animation")("warning")(new Just("Turn animation on and off"))(ToggleAnimation2.value), mkButton("Toggle Lines")("secondary")(new Just("Turn lines on and off"))(ToggleLines2.value), mkButton("Reset")("error")(new Just("Reset animation"))(Reset2.value), mkNumInput("_-adic Norm")(show2(fromMaybe(0)(getPrime(baseInput.norm))))(new Just("<= 1 yields normal absolute value; 2 and above use p-adic norm"))(SetNorm.create), mkNumInput("# of Frames")(show2(baseInput.maxTick))(new Just("Frames between each position; controls speed of animation"))(SetTick.create), mkNumInput("p^# of Circles")(show2(baseInput.power))(new Just("Use this p^(power) many circles; for example, in the 3-adic norm, setting this to 3 will use 27 circles"))(SetMax.create), mkNumInput("Scale")(show2(baseInput.scale))(new Just("Controls distance between dots"))(SetScale.create), mkNumInput("Radius")(show2(baseInput.radius))(new Just("Controls size of dots"))(SetRadius.create), mkNumInput("Constant Term")(show2(baseInput.addTo))(new Just("Set constant term in ax^3 + bx^2 + cx + d"))(SetAdd.create), mkNumInput("Linear Coefficient")(show2(baseInput.multBy))(new Just("Set linear component"))(SetMult.create), mkNumInput("Quad Coefficient")(show2(baseInput.quadCoeff))(new Just("Set quadratic component"))(SetQuad.create), mkNumInput("Cubic Coefficient")(show2(baseInput.cubeCoeff))(new Just("Set cubic component"))(SetCube.create), mkCheckbox("Square Root?")(new Just("Take square root of the above"))(ChangeSqrt2.create), mkCheckbox("Cube Root?")(new Just("Take cube root of the above"))(ChangeCbrt2.create)]);
+    var renderSidebar = div4([class_("pure-u-1-4 sidebar")])([mkButton("Toggle Representation")("primary")(new Just("Between fractal given by the p-adic representation, or circles given by the p-adic norm"))(ToggleRepr2.value), mkButton("Toggle Animation")("warning")(new Just("Turn animation on and off"))(ToggleAnimation2.value), mkButton("Toggle Lines")("secondary")(new Just("Turn lines on and off"))(ToggleLines2.value), mkButton("Reset")("error")(new Just("Reset animation"))(Reset2.value), mkNumInput("_-adic Norm")(show3(fromMaybe(0)(getPrime(baseInput.norm))))(new Just("<= 1 yields normal absolute value; 2 and above use p-adic norm"))(SetNorm.create), mkNumInput("# of Frames")(show3(baseInput.maxTick))(new Just("Frames between each position; controls speed of animation"))(SetTick.create), mkNumInput("p^# of Circles")(show3(baseInput.power))(new Just("Use this p^(power) many circles; for example, in the 3-adic norm, setting this to 3 will use 27 circles"))(SetMax.create), mkNumInput("Scale")(show3(baseInput.scale))(new Just("Controls distance between dots"))(SetScale.create), mkNumInput("Radius")(show3(baseInput.radius))(new Just("Controls size of dots"))(SetRadius.create), mkNumInput("Constant Term")(show3(baseInput.addTo))(new Just("Set constant term in ax^3 + bx^2 + cx + d"))(SetAdd.create), mkNumInput("Linear Coefficient")(show3(baseInput.multBy))(new Just("Set linear component"))(SetMult.create), mkNumInput("Quad Coefficient")(show3(baseInput.quadCoeff))(new Just("Set quadratic component"))(SetQuad.create), mkNumInput("Cubic Coefficient")(show3(baseInput.cubeCoeff))(new Just("Set cubic component"))(SetCube.create), mkCheckbox("Square Root?")(new Just("Take square root of the above"))(ChangeSqrt2.create), mkCheckbox("Cube Root?")(new Just("Take cube root of the above"))(ChangeCbrt2.create)]);
     return div4([class_("pure-g")])([renderSidebar, renderMain]);
   };
   var component2 = /* @__PURE__ */ function() {
@@ -10723,8 +10843,8 @@
         return function(lchs) {
           return function __do2() {
             var selfRef = $$new({})();
-            var childrenIn = $$new(empty3)();
-            var childrenOut = $$new(empty3)();
+            var childrenIn = $$new(empty4)();
+            var childrenOut = $$new(empty4)();
             var handlerRef = $$new(handler3)();
             var pendingQueries = $$new(new Just(Nil.value))();
             var pendingOuts = $$new(new Just(Nil.value))();
@@ -10736,7 +10856,7 @@
               component: component3,
               state: component3.initialState(input3),
               refs: empty2,
-              children: empty3,
+              children: empty4,
               childrenIn,
               childrenOut,
               selfRef,
@@ -10775,12 +10895,12 @@
   var parallel2 = /* @__PURE__ */ parallel(parallelAff);
   var map110 = /* @__PURE__ */ map(functorAff);
   var sequential2 = /* @__PURE__ */ sequential(parallelAff);
-  var map22 = /* @__PURE__ */ map(functorMaybe);
-  var insert6 = /* @__PURE__ */ insert2(ordSubscriptionId);
+  var map23 = /* @__PURE__ */ map(functorMaybe);
+  var insert7 = /* @__PURE__ */ insert2(ordSubscriptionId);
   var retractFreeAp2 = /* @__PURE__ */ retractFreeAp(applicativeParAff);
   var $$delete3 = /* @__PURE__ */ $$delete2(ordForkId);
   var unlessM2 = /* @__PURE__ */ unlessM(monadEffect);
-  var insert12 = /* @__PURE__ */ insert2(ordForkId);
+  var insert13 = /* @__PURE__ */ insert2(ordForkId);
   var traverse_32 = /* @__PURE__ */ traverse_12(foldableMaybe);
   var lookup12 = /* @__PURE__ */ lookup(ordForkId);
   var lookup22 = /* @__PURE__ */ lookup(ordString);
@@ -10913,7 +11033,7 @@
                   return handleAff(evalF(render3)(ref2)(new Action(act)));
                 })))(function(finalize) {
                   return bind13(liftEffect5(read(ref2)))(function(v2) {
-                    return discard1(liftEffect5(modify_(map22(insert6(sid)(finalize)))(v2.subscriptions)))(function() {
+                    return discard1(liftEffect5(modify_(map23(insert7(sid)(finalize)))(v2.subscriptions)))(function() {
                       return pure9(v1.value1(sid));
                     });
                   });
@@ -10962,7 +11082,7 @@
                       modify_($$delete3(fid))(v2.forks)();
                       return write(true)(doneRef)();
                     }))(evalM(render3)(ref2)(v1.value0))))(function(fiber) {
-                      return discard1(liftEffect5(unlessM2(read(doneRef))(modify_(insert12(fid)(fiber))(v2.forks))))(function() {
+                      return discard1(liftEffect5(unlessM2(read(doneRef))(modify_(insert13(fid)(fiber))(v2.forks))))(function() {
                         return pure9(v1.value1(fid));
                       });
                     });
@@ -11211,7 +11331,7 @@
               var v = read($$var2)();
               var shouldProcessHandlers = map21(isNothing)(read(v.pendingHandlers))();
               when2(shouldProcessHandlers)(write(new Just(Nil.value))(v.pendingHandlers))();
-              write(empty3)(v.childrenOut)();
+              write(empty4)(v.childrenOut)();
               write(v.children)(v.childrenIn)();
               var handler3 = function() {
                 var $69 = queueOrRun(v.pendingHandlers);
@@ -11402,15 +11522,15 @@
   }
 
   // output/Web.DOM.Node/index.js
-  var map23 = /* @__PURE__ */ map(functorEffect);
+  var map24 = /* @__PURE__ */ map(functorEffect);
   var parentNode2 = /* @__PURE__ */ function() {
-    var $6 = map23(toMaybe);
+    var $6 = map24(toMaybe);
     return function($7) {
       return $6(_parentNode($7));
     };
   }();
   var nextSibling = /* @__PURE__ */ function() {
-    var $15 = map23(toMaybe);
+    var $15 = map24(toMaybe);
     return function($16) {
       return $15(_nextSibling($16));
     };
@@ -11440,7 +11560,7 @@
   var identity10 = /* @__PURE__ */ identity(categoryFn);
   var bind15 = /* @__PURE__ */ bind(bindAff);
   var liftEffect7 = /* @__PURE__ */ liftEffect(monadEffectAff);
-  var map24 = /* @__PURE__ */ map(functorEffect);
+  var map25 = /* @__PURE__ */ map(functorEffect);
   var bindFlipped7 = /* @__PURE__ */ bindFlipped(bindEffect);
   var substInParent = function(v) {
     return function(v1) {
@@ -11588,7 +11708,7 @@
   var runUI2 = function(component3) {
     return function(i2) {
       return function(element3) {
-        return bind15(liftEffect7(map24(toDocument)(bindFlipped7(document2)(windowImpl))))(function(document3) {
+        return bind15(liftEffect7(map25(toDocument)(bindFlipped7(document2)(windowImpl))))(function(document3) {
           return runUI(renderSpec(document3)(element3))(component3)(i2);
         });
       };

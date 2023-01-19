@@ -8,6 +8,8 @@ import Data.Maybe (Maybe(..))
 import Data.Number as Number
 
 newtype Tick = Tick Int
+derive instance eqTick :: Eq Tick
+derive instance ordTick :: Ord Tick
 
 startTick :: Tick
 startTick = Tick 1

@@ -3,7 +3,7 @@ module Component.Canvas where
 import Prelude
 
 import Color as Co
-import Component.Animation (Tick, incTick, startTick)
+import Component.Animation (Tick(..), incTick, startTick)
 import Component.Animation as An
 import Component.Bubble as B
 import Control.Monad.Reader as Reader
@@ -21,6 +21,8 @@ import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Number as Number
 import Data.Rational (Rational, fromInt)
 import Data.Rational as R
+import Data.Set (Set)
+import Data.Set as S
 import Data.Traversable (for_, sequence_)
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
@@ -44,6 +46,7 @@ derive instance ordSlot :: Ord Slot
 data CoordType = Circular | PadicVector
 
 type Model = { maxInt :: Int
+             , maxValue :: Int
              , power :: Int
              , norm :: Norm
              , bubbles :: Array (List Int)
@@ -52,6 +55,7 @@ type Model = { maxInt :: Int
              , coordType :: CoordType
              , cache :: Map Int Coordinates
              , colorCache :: Map Int String
+             , drawnBuffers :: Set Tick
              , maxTick :: Int
              , animate :: Boolean
              , lines :: Boolean
@@ -89,12 +93,14 @@ initialModel input =
   in { power: input.power
      , norm: input.norm
      , maxInt: maxInt
+     , maxValue: maxInt
      , bubbles: mkBubbles maxInt
      , time: Nothing
      , size: input.size
      , coordType: input.coordType
      , cache: M.empty
      , colorCache: M.empty
+     , drawnBuffers: S.empty
      , maxTick: input.maxTick
      , animate: true
      , lines: false
@@ -111,10 +117,10 @@ initialModel input =
 getR :: Model -> Rational -> Rational
 getR model value = value / fromInt maxValue
   where
-    maxValue = if isPadic model.norm then 1 else (pow (model.maxInt + 1) 2)
+    maxValue = if isPadic model.norm then 1 else model.maxValue
 
 getTheta :: Model -> Int -> Number
-getTheta model value = Number.pi * 2.0 * (toNumber value) / (toNumber (model.maxInt + 1))
+getTheta model value = Number.pi * 2.0 * (toNumber value) / (toNumber model.maxValue)
 
 toPolar :: Model -> Int -> PolarCoordinates
 toPolar model n =
@@ -136,7 +142,7 @@ getCircleCoord model n =
 getPadicCoord :: Model -> Int -> Coordinates
 getPadicCoord model n =
   let p = fromMaybe 0 (getPrime model.norm)
-  in normalizeCoords model $ PV.toVector (pow (model.maxInt + 1) 3) p n
+  in normalizeCoords model $ PV.toVector model.maxValue p n
 
 getCoordinates :: (Number -> Number -> Number) ->
                   Map Int Coordinates -> Number ->
@@ -149,10 +155,9 @@ getCoordinates interpolater cache size (Tuple oldValue newValue) =
      , y: interpolater new.y old.y
      }
 
-getColor :: (Number -> Number -> Number) ->
-            Map Int String ->
-            Tuple Int Int -> String
-getColor interpolater cache (Tuple oldValue _newValue) =
+getColor :: Map Int String ->
+           Tuple Int Int -> String
+getColor cache (Tuple oldValue _newValue) =
   fromMaybe "#000" $ M.lookup oldValue cache
 
 component :: forall output. H.Component Query Input output Aff
@@ -175,8 +180,8 @@ mkColor model value =
         PadicVector -> 1.0
       step = 1.0 / toNumber (model.maxInt + 1)
       pstep = step * divisor
-      sat = 0.5 + 0.5 * step * toNumber value
-      val = 1.0 - 0.5 * step * toNumber value
+      sat = 0.2 + 0.8 * step * toNumber value
+      val = 0.8 + 0.2 * step * toNumber value
       hue = 360.0 * pstep * toNumber value
   in Co.toHexString (Co.hsv hue sat val)
 
@@ -222,7 +227,6 @@ drawBubble ctx model oldCoordGetter coordGetter colorGetter radius bubble =
      (if model.lines then drawLine ctx startCoords coords (toNumber radius) color
                      else pure unit)
 
-
 drawBubbles :: Ca.Context2D ->
                Model ->
               (Tuple Int Int -> Coordinates) ->
@@ -240,14 +244,22 @@ canvasId = "bubble-canvas"
 getSize :: Model -> Int
 getSize model = round $ 4.0 * toNumber model.scale
 
+bufferCanvas :: forall action slots m. Int -> Int -> HH.ComponentHTML action slots m
+bufferCanvas size i = HH.canvas [ HP.id ( canvasForTick $ Tick i )
+                                , HP.width size
+                                , HP.height size
+                                , HP.class_ $ HH.ClassName "buffer-canvas" ]
+
 render :: forall action slots m. Model -> H.ComponentHTML action slots m
 render model =
   let size = getSize model
   in
-   HH.canvas [ HP.width size
-             , HP.height size
-             , HP.id canvasId
-             ]
+   HH.div [ HP.id "animation-station" ] [ HH.canvas [ HP.width size
+                                                    , HP.height size
+                                                    , HP.id canvasId
+                                                    ]
+                                        , HH.div  [ HP.id "buffer-canvases" ] ( map (bufferCanvas size) $ A.range 0 model.maxInt )
+          ]
 
 data Query a = ReceiveAction Action a
 
@@ -317,6 +329,7 @@ reinitCache = do
   let
       inputInts = A.range 0 model.maxInt
       outputInts = A.filter (\x -> x > model.maxInt) $ A.concatMap A.fromFoldable model.bubbles
+      maxValue = A.foldl (\acc l -> max acc (L.foldl max 0 l)) 0 model.bubbles
       ints = A.concat [inputInts, outputInts]
       emptyCache :: Map Int Coordinates
       emptyCache = M.empty
@@ -330,6 +343,8 @@ reinitCache = do
       colorCache = A.foldl (\acc x -> M.insert x (mkColor model x) acc) M.empty ints
   H.modify_ (_ { cache = cache
                , colorCache = colorCache
+               , maxValue = maxValue
+               , drawnBuffers = S.empty :: Set Tick
                })
   H.liftEffect $ redraw model
   pure unit
@@ -358,6 +373,9 @@ changeMax power model =
   in model { maxInt = pow x power - 1,
              power = power }
 
+canvasForTick :: Tick -> String
+canvasForTick (Tick t) = canvasId <> "-" <> show t
+
 redraw :: Model -> Effect Unit
 redraw model =
   let sqrtInterp = Reader.runReader (An.sqrtInterpolate model.time) model.maxTick
@@ -365,25 +383,37 @@ redraw model =
       alpha = sinInterp 0.6 0.15
       coordGetter = getCoordinates sqrtInterp model.cache (toNumber $ getSize model)
       oldCoordGetter = getCoordinates (\_ y -> y) model.cache (toNumber $ getSize model)
-      colorGetter = getColor sqrtInterp model.colorCache
+      colorGetter = getColor model.colorCache
+      canvasName = canvasForTick (fromMaybe (Tick 0) model.time)
   in do
     mcanvas <- Ca.getCanvasElementById canvasId
     case mcanvas of
       Nothing -> pure unit
       Just canvas -> do
         ctx <- Ca.getContext2D canvas
-        dim <- Ca.getCanvasDimensions canvas
-        Ca.clearRect ctx {x: 0.0, y: 0.0, width: dim.width, height: dim.height}
-        Ca.setGlobalAlpha ctx alpha
-        sequence_ $
-          A.mapWithIndex (\idx vs -> drawBubbles ctx model oldCoordGetter coordGetter colorGetter model.radius (Tuple idx vs)) model.bubbles
-        pure unit
+        mbuffer <- Ca.getCanvasElementById canvasName
+        case mbuffer of
+          Nothing -> pure unit
+          Just buffer -> do
+            dim <- Ca.getCanvasDimensions canvas
+            Ca.clearRect ctx {x: 0.0, y: 0.0, width: dim.width, height: dim.height}
+            --Ca.setGlobalAlpha ctx alpha
+            if fromMaybe false ( flip S.member model.drawnBuffers <$> model.time )
+               then Ca.drawImage ctx (Ca.canvasElementToImageSource buffer) 0.0 0.0
+               else do
+                sequence_ $
+                        A.mapWithIndex (\idx vs -> drawBubbles ctx model oldCoordGetter coordGetter colorGetter model.radius (Tuple idx vs)) model.bubbles
+                bufferCtx <- Ca.getContext2D buffer
+                Ca.clearRect bufferCtx {x: 0.0, y: 0.0, width: dim.width, height: dim.height}
+                Ca.drawImage bufferCtx (Ca.canvasElementToImageSource canvas) 0.0 0.0
+                pure unit
 
 redrawStep :: forall action output. H.HalogenM Model action () output Aff Unit
 redrawStep = do
   model <- H.get
   H.modify_ (_ { animate = false })
   H.liftEffect (redraw model)
+  H.modify_ (_ { drawnBuffers = S.insert (fromMaybe (Tick 0) model.time) model.drawnBuffers })
   H.modify_ (_ { animate = true })
   pure unit
 
@@ -395,7 +425,7 @@ handleAction (ChangeMax power) =
   H.modify_ (changeMax power) *> reinitCache
 handleAction (ChangeNorm norm) = H.modify_ (_ { norm = norm }) *> reinitCache
 handleAction (ChangeTick tick) =
-  H.modify_ (_ { maxTick = tick } ) *> pure unit
+  H.modify_ (_ { maxTick = tick } ) *> reinitCache
 handleAction (ChangeAddTo addTo) =
   H.modify_ (_ { addTo = addTo } ) *> reinitCache
 handleAction (ChangeMultBy multBy) =
@@ -411,9 +441,9 @@ handleAction (ChangeCbrt b) =
 handleAction (ChangeScale scale) =
   H.modify_ (_ { scale = scale } ) *> reinitCache
 handleAction (ChangeRadius radius) =
-  H.modify_ (_ { radius = radius } ) *> pure unit
+  H.modify_ (_ { radius = radius } ) *> reinitCache
 handleAction ToggleRepr = H.modify_ toggleRepr *> reinitCache
-handleAction ToggleLines = H.modify_ toggleLines *> pure unit
+handleAction ToggleLines = H.modify_ toggleLines *> reinitCache
 handleAction ToggleAnimation = H.modify_ toggleAnimation *> reinitCache
 handleAction MoveTick = do
   model <- H.get
