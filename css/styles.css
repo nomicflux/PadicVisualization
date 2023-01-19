@@ -45,10 +45,10 @@
     padding-right: 10px;
 }
 
-.buffer-canvas {
+.buffer-canvas-hide {
     display: none;
 }
 
-.buffer-canvases {
-    display: none;
+.buffer-canvas-show {
+    display: inline;
 }

@@ -6071,9 +6071,6 @@
   var nonCanceler = /* @__PURE__ */ $$const(/* @__PURE__ */ pure22(unit));
 
   // output/Graphics.Canvas/foreign.js
-  function canvasElementToImageSource(e) {
-    return e;
-  }
   function getCanvasElementByIdImpl(id3, Just2, Nothing2) {
     return function() {
       var el = document.getElementById(id3);
@@ -6169,17 +6166,6 @@
     return function(r) {
       return function() {
         ctx.clearRect(r.x, r.y, r.width, r.height);
-      };
-    };
-  }
-  function drawImage(ctx) {
-    return function(image_source) {
-      return function(dx) {
-        return function(dy) {
-          return function() {
-            ctx.drawImage(image_source, dx, dy);
-          };
-        };
       };
     };
   }
@@ -9244,7 +9230,7 @@
         return PadicVector.value;
       }
       ;
-      throw new Error("Failed pattern match at Component.Canvas (line 381, column 17 - line 383, column 32): " + [model.coordType.constructor.name]);
+      throw new Error("Failed pattern match at Component.Canvas (line 375, column 17 - line 377, column 32): " + [model.coordType.constructor.name]);
     }();
     return {
       maxInt: model.maxInt,
@@ -9438,8 +9424,8 @@
   var getR = function(model) {
     return function(value12) {
       var maxValue = function() {
-        var $99 = isPadic(model.norm);
-        if ($99) {
+        var $101 = isPadic(model.norm);
+        if ($101) {
           return 1;
         }
         ;
@@ -9508,9 +9494,9 @@
             if (circuit instanceof Cons) {
               var outputs = fromMaybe(Nil.value)(index(lookup13)(circuit.value0));
               var newOutputs = filter2(function() {
-                var $213 = flip(member3)(acc);
-                return function($214) {
-                  return !$213($214);
+                var $217 = flip(member3)(acc);
+                return function($218) {
+                  return !$217($218);
                 };
               }())(outputs);
               $tco_var_circuit = append7(circuit.value1)(newOutputs);
@@ -9518,7 +9504,7 @@
               return;
             }
             ;
-            throw new Error("Failed pattern match at Component.Canvas (line 336, column 22 - line 340, column 66): " + [circuit.constructor.name]);
+            throw new Error("Failed pattern match at Component.Canvas (line 330, column 22 - line 334, column 66): " + [circuit.constructor.name]);
           }
           ;
           while (!$tco_done) {
@@ -9586,8 +9572,8 @@
                 var coords2 = coordGetter(bubble);
                 var color = colorGetter(bubble);
                 return applySecond1(drawCircle(ctx)(coords2)(toNumber(radius))(color))(function() {
-                  var $118 = model.lines || member3(bubble.value0)(model.circuit);
-                  if ($118) {
+                  var $120 = model.lines || member3(bubble.value0)(model.circuit);
+                  if ($120) {
                     return drawLine(ctx)(startCoords)(coords2)(toNumber(radius))(color);
                   }
                   ;
@@ -9631,7 +9617,7 @@
           return 1;
         }
         ;
-        throw new Error("Failed pattern match at Component.Canvas (line 391, column 11 - line 393, column 17): " + [model.norm.constructor.name]);
+        throw new Error("Failed pattern match at Component.Canvas (line 385, column 11 - line 387, column 17): " + [model.norm.constructor.name]);
       }();
       return {
         maxInt: pow(x)(power) - 1 | 0,
@@ -9661,9 +9647,8 @@
       };
     };
   };
-  var canvasId = "bubble-canvas";
   var canvasForTick = function(v) {
-    return canvasId + ("-" + show2(v));
+    return "bubble-canvas-" + show2(v);
   };
   var redraw = function(model) {
     var sqrtInterp = runReader(sqrtInterpolate2(model.time))(model.maxTick);
@@ -9678,51 +9663,34 @@
     var canvasName = canvasForTick(fromMaybe(0)(model.time));
     var alpha = sinInterp(0.6)(0.15);
     return function __do2() {
-      var mcanvas = getCanvasElementById(canvasId)();
+      var mcanvas = getCanvasElementById(canvasName)();
       if (mcanvas instanceof Nothing) {
         return unit;
       }
       ;
       if (mcanvas instanceof Just) {
+        var $130 = fromMaybe(false)(map15(flip(member1)(model.drawnBuffers))(model.time));
+        if ($130) {
+          return unit;
+        }
+        ;
         var ctx = getContext2D(mcanvas.value0)();
-        var mbuffer = getCanvasElementById(canvasName)();
-        if (mbuffer instanceof Nothing) {
-          return unit;
-        }
-        ;
-        if (mbuffer instanceof Just) {
-          var dim = getCanvasDimensions(mcanvas.value0)();
-          clearRect(ctx)({
-            x: 0,
-            y: 0,
-            width: dim.width,
-            height: dim.height
-          })();
-          var $129 = fromMaybe(false)(map15(flip(member1)(model.drawnBuffers))(model.time));
-          if ($129) {
-            return drawImage(ctx)(canvasElementToImageSource(mbuffer.value0))(0)(0)();
-          }
-          ;
-          sequence_2(mapWithIndex(function(idx) {
-            return function(vs) {
-              return drawBubbles(ctx)(model)(oldCoordGetter)(coordGetter)(colorGetter)(model.radius)(new Tuple(idx, vs));
-            };
-          })(model.bubbles))();
-          var bufferCtx = getContext2D(mbuffer.value0)();
-          clearRect(bufferCtx)({
-            x: 0,
-            y: 0,
-            width: dim.width,
-            height: dim.height
-          })();
-          drawImage(bufferCtx)(canvasElementToImageSource(mcanvas.value0))(0)(0)();
-          return unit;
-        }
-        ;
-        throw new Error("Failed pattern match at Component.Canvas (line 416, column 9 - line 430, column 26): " + [mbuffer.constructor.name]);
+        var dim = getCanvasDimensions(mcanvas.value0)();
+        clearRect(ctx)({
+          x: 0,
+          y: 0,
+          width: dim.width,
+          height: dim.height
+        })();
+        sequence_2(mapWithIndex(function(idx) {
+          return function(vs) {
+            return drawBubbles(ctx)(model)(oldCoordGetter)(coordGetter)(colorGetter)(model.radius)(new Tuple(idx, vs));
+          };
+        })(model.bubbles))();
+        return unit;
       }
       ;
-      throw new Error("Failed pattern match at Component.Canvas (line 411, column 5 - line 430, column 26): " + [mcanvas.constructor.name]);
+      throw new Error("Failed pattern match at Component.Canvas (line 405, column 5 - line 417, column 22): " + [mcanvas.constructor.name]);
     };
   };
   var redrawStep = /* @__PURE__ */ bind12(get2)(function(model) {
@@ -9770,19 +9738,28 @@
     });
   });
   var bufferCanvas = function(size5) {
-    return function(i2) {
-      return canvas([id2(canvasForTick(i2)), width(size5), height(size5), class_("buffer-canvas")]);
+    return function(v) {
+      return function(i2) {
+        return canvas([id2(canvasForTick(i2)), width(size5), height(size5), class_("buffer-canvas-" + function() {
+          var $144 = v === i2;
+          if ($144) {
+            return "show";
+          }
+          ;
+          return "hide";
+        }())]);
+      };
     };
   };
   var render = function(model) {
     var size5 = getSize(model);
-    return div4([id2("animation-station")])([canvas([width(size5), height(size5), id2(canvasId)]), div4([id2("buffer-canvases")])(map14(bufferCanvas(size5))(range(0)(model.maxInt)))]);
+    return div4([id2("animation-station")])(map14(bufferCanvas(size5)(fromMaybe(0)(model.time)))(range(0)(model.maxInt)));
   };
   var bubbleFn = function(model) {
     var base2 = function() {
-      var $215 = cubeBy(model.cubeCoeff)(model.quadCoeff)(model.multBy)(model.addTo);
-      return function($216) {
-        return singleton5($215($216));
+      var $219 = cubeBy(model.cubeCoeff)(model.quadCoeff)(model.multBy)(model.addTo);
+      return function($220) {
+        return singleton5($219($220));
       };
     }();
     var sqrted = function() {
@@ -9882,23 +9859,23 @@
             })(empty2)(ints);
           }
           ;
-          throw new Error("Failed pattern match at Component.Canvas (line 355, column 15 - line 359, column 85): " + [model.coordType.constructor.name]);
+          throw new Error("Failed pattern match at Component.Canvas (line 349, column 15 - line 353, column 85): " + [model.coordType.constructor.name]);
         }();
         return discard22(modify_3(function(v) {
-          var $144 = {};
-          for (var $145 in v) {
-            if ({}.hasOwnProperty.call(v, $145)) {
-              $144[$145] = v[$145];
+          var $148 = {};
+          for (var $149 in v) {
+            if ({}.hasOwnProperty.call(v, $149)) {
+              $148[$149] = v[$149];
             }
             ;
           }
           ;
-          $144.cache = cache;
-          $144.colorCache = colorCache;
-          $144.maxValue = maxValue;
-          $144.drawnBuffers = empty3;
-          $144.circuit = newCircuit;
-          return $144;
+          $148.cache = cache;
+          $148.colorCache = colorCache;
+          $148.maxValue = maxValue;
+          $148.drawnBuffers = empty3;
+          $148.circuit = newCircuit;
+          return $148;
         }))(function() {
           return bind12(get2)(function(model2) {
             return discard22(liftEffect3(redraw(model2)))(function() {
@@ -9916,21 +9893,6 @@
     ;
     if (v instanceof ChangeNorm) {
       return applySecond22(modify_3(function(v1) {
-        var $149 = {};
-        for (var $150 in v1) {
-          if ({}.hasOwnProperty.call(v1, $150)) {
-            $149[$150] = v1[$150];
-          }
-          ;
-        }
-        ;
-        $149.norm = v.value0;
-        return $149;
-      }))(reinitCache);
-    }
-    ;
-    if (v instanceof ChangeTick) {
-      return applySecond22(modify_3(function(v1) {
         var $153 = {};
         for (var $154 in v1) {
           if ({}.hasOwnProperty.call(v1, $154)) {
@@ -9939,12 +9901,12 @@
           ;
         }
         ;
-        $153.maxTick = v.value0;
+        $153.norm = v.value0;
         return $153;
       }))(reinitCache);
     }
     ;
-    if (v instanceof ChangeAddTo) {
+    if (v instanceof ChangeTick) {
       return applySecond22(modify_3(function(v1) {
         var $157 = {};
         for (var $158 in v1) {
@@ -9954,12 +9916,12 @@
           ;
         }
         ;
-        $157.addTo = v.value0;
+        $157.maxTick = v.value0;
         return $157;
       }))(reinitCache);
     }
     ;
-    if (v instanceof ChangeMultBy) {
+    if (v instanceof ChangeAddTo) {
       return applySecond22(modify_3(function(v1) {
         var $161 = {};
         for (var $162 in v1) {
@@ -9969,12 +9931,12 @@
           ;
         }
         ;
-        $161.multBy = v.value0;
+        $161.addTo = v.value0;
         return $161;
       }))(reinitCache);
     }
     ;
-    if (v instanceof ChangeQuadBy) {
+    if (v instanceof ChangeMultBy) {
       return applySecond22(modify_3(function(v1) {
         var $165 = {};
         for (var $166 in v1) {
@@ -9984,12 +9946,12 @@
           ;
         }
         ;
-        $165.quadCoeff = v.value0;
+        $165.multBy = v.value0;
         return $165;
       }))(reinitCache);
     }
     ;
-    if (v instanceof ChangeCubeBy) {
+    if (v instanceof ChangeQuadBy) {
       return applySecond22(modify_3(function(v1) {
         var $169 = {};
         for (var $170 in v1) {
@@ -9999,12 +9961,12 @@
           ;
         }
         ;
-        $169.cubeCoeff = v.value0;
+        $169.quadCoeff = v.value0;
         return $169;
       }))(reinitCache);
     }
     ;
-    if (v instanceof ChangeSqrt) {
+    if (v instanceof ChangeCubeBy) {
       return applySecond22(modify_3(function(v1) {
         var $173 = {};
         for (var $174 in v1) {
@@ -10014,12 +9976,12 @@
           ;
         }
         ;
-        $173.sqrt = v.value0;
+        $173.cubeCoeff = v.value0;
         return $173;
       }))(reinitCache);
     }
     ;
-    if (v instanceof ChangeCbrt) {
+    if (v instanceof ChangeSqrt) {
       return applySecond22(modify_3(function(v1) {
         var $177 = {};
         for (var $178 in v1) {
@@ -10029,12 +9991,12 @@
           ;
         }
         ;
-        $177.cbrt = v.value0;
+        $177.sqrt = v.value0;
         return $177;
       }))(reinitCache);
     }
     ;
-    if (v instanceof ChangeScale) {
+    if (v instanceof ChangeCbrt) {
       return applySecond22(modify_3(function(v1) {
         var $181 = {};
         for (var $182 in v1) {
@@ -10044,12 +10006,12 @@
           ;
         }
         ;
-        $181.scale = v.value0;
+        $181.cbrt = v.value0;
         return $181;
       }))(reinitCache);
     }
     ;
-    if (v instanceof ChangeRadius) {
+    if (v instanceof ChangeScale) {
       return applySecond22(modify_3(function(v1) {
         var $185 = {};
         for (var $186 in v1) {
@@ -10059,13 +10021,13 @@
           ;
         }
         ;
-        $185.radius = v.value0;
+        $185.scale = v.value0;
         return $185;
       }))(reinitCache);
     }
     ;
-    if (v instanceof TrajectoryFrom) {
-      return discard22(modify_3(function(v1) {
+    if (v instanceof ChangeRadius) {
+      return applySecond22(modify_3(function(v1) {
         var $189 = {};
         for (var $190 in v1) {
           if ({}.hasOwnProperty.call(v1, $190)) {
@@ -10074,41 +10036,56 @@
           ;
         }
         ;
-        $189.trajectoryFrom = v.value0;
+        $189.radius = v.value0;
         return $189;
+      }))(reinitCache);
+    }
+    ;
+    if (v instanceof TrajectoryFrom) {
+      return discard22(modify_3(function(v1) {
+        var $193 = {};
+        for (var $194 in v1) {
+          if ({}.hasOwnProperty.call(v1, $194)) {
+            $193[$194] = v1[$194];
+          }
+          ;
+        }
+        ;
+        $193.trajectoryFrom = v.value0;
+        return $193;
       }))(function() {
         return discard22(function() {
           if (v.value0 instanceof Nothing) {
             return modify_3(function(v1) {
-              var $193 = {};
-              for (var $194 in v1) {
-                if ({}.hasOwnProperty.call(v1, $194)) {
-                  $193[$194] = v1[$194];
+              var $197 = {};
+              for (var $198 in v1) {
+                if ({}.hasOwnProperty.call(v1, $198)) {
+                  $197[$198] = v1[$198];
                 }
                 ;
               }
               ;
-              $193.circuit = empty3;
-              return $193;
+              $197.circuit = empty3;
+              return $197;
             });
           }
           ;
           if (v.value0 instanceof Just) {
             return modify_3(function(v1) {
-              var $196 = {};
-              for (var $197 in v1) {
-                if ({}.hasOwnProperty.call(v1, $197)) {
-                  $196[$197] = v1[$197];
+              var $200 = {};
+              for (var $201 in v1) {
+                if ({}.hasOwnProperty.call(v1, $201)) {
+                  $200[$201] = v1[$201];
                 }
                 ;
               }
               ;
-              $196.circuit = singleton7(v.value0.value0);
-              return $196;
+              $200.circuit = singleton7(v.value0.value0);
+              return $200;
             });
           }
           ;
-          throw new Error("Failed pattern match at Component.Canvas (line 468, column 3 - line 470, column 57): " + [v.value0.constructor.name]);
+          throw new Error("Failed pattern match at Component.Canvas (line 455, column 3 - line 457, column 57): " + [v.value0.constructor.name]);
         }())(function() {
           return reinitCache;
         });
@@ -10141,16 +10118,16 @@
           });
           if (newTick instanceof Just) {
             return discard22(modify_3(function(v1) {
-              var $203 = {};
-              for (var $204 in v1) {
-                if ({}.hasOwnProperty.call(v1, $204)) {
-                  $203[$204] = v1[$204];
+              var $207 = {};
+              for (var $208 in v1) {
+                if ({}.hasOwnProperty.call(v1, $208)) {
+                  $207[$208] = v1[$208];
                 }
                 ;
               }
               ;
-              $203.time = newTick;
-              return $203;
+              $207.time = newTick;
+              return $207;
             }))(function() {
               return discard22(redrawStep)(function() {
                 return pure23(unit);
@@ -10160,16 +10137,16 @@
           ;
           if (newTick instanceof Nothing) {
             return discard22(modify_3(function(v1) {
-              var $207 = {};
-              for (var $208 in v1) {
-                if ({}.hasOwnProperty.call(v1, $208)) {
-                  $207[$208] = v1[$208];
+              var $211 = {};
+              for (var $212 in v1) {
+                if ({}.hasOwnProperty.call(v1, $212)) {
+                  $211[$212] = v1[$212];
                 }
                 ;
               }
               ;
-              $207.time = new Just(startTick);
-              return $207;
+              $211.time = new Just(startTick);
+              return $211;
             }))(function() {
               return discard22(redrawStep)(function() {
                 return pure23(unit);
@@ -10177,10 +10154,10 @@
             });
           }
           ;
-          throw new Error("Failed pattern match at Component.Canvas (line 483, column 7 - line 491, column 20): " + [newTick.constructor.name]);
+          throw new Error("Failed pattern match at Component.Canvas (line 470, column 7 - line 478, column 20): " + [newTick.constructor.name]);
         }
         ;
-        throw new Error("Failed pattern match at Component.Canvas (line 477, column 3 - line 491, column 20): " + [model.animate.constructor.name]);
+        throw new Error("Failed pattern match at Component.Canvas (line 464, column 3 - line 478, column 20): " + [model.animate.constructor.name]);
       });
     }
     ;
@@ -10196,7 +10173,7 @@
       });
     }
     ;
-    throw new Error("Failed pattern match at Component.Canvas (line 444, column 1 - line 444, column 84): " + [v.constructor.name]);
+    throw new Error("Failed pattern match at Component.Canvas (line 431, column 1 - line 431, column 84): " + [v.constructor.name]);
   };
   var handleQuery = function(v) {
     return applySecond22(handleAction(v.value0))(pure23(new Just(v.value1)));

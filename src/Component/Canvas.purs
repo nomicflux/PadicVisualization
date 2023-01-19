@@ -245,28 +245,22 @@ drawBubbles :: Ca.Context2D ->
 drawBubbles ctx model oldCoordGetter coordGetter colorGetter radius bubbles =
   for_ (distributeTuple bubbles) $ drawBubble ctx model oldCoordGetter coordGetter colorGetter radius
 
-canvasId :: String
-canvasId = "bubble-canvas"
-
 getSize :: Model -> Int
 getSize model = round $ 4.0 * toNumber model.scale
 
-bufferCanvas :: forall action slots m. Int -> Int -> HH.ComponentHTML action slots m
-bufferCanvas size i = HH.canvas [ HP.id ( canvasForTick $ Tick i )
-                                , HP.width size
-                                , HP.height size
-                                , HP.class_ $ HH.ClassName "buffer-canvas" ]
+bufferCanvas :: forall action slots m. Int -> Tick -> Int -> HH.ComponentHTML action slots m
+bufferCanvas size (Tick t) i = HH.canvas [ HP.id ( canvasForTick $ Tick i )
+                                         , HP.width size
+                                         , HP.height size
+                                         , HP.class_ $ HH.ClassName $ "buffer-canvas-" <> if t == i then "show" else "hide"
+                                         ]
 
 render :: forall action slots m. Model -> H.ComponentHTML action slots m
 render model =
   let size = getSize model
   in
-   HH.div [ HP.id "animation-station" ] [ HH.canvas [ HP.width size
-                                                    , HP.height size
-                                                    , HP.id canvasId
-                                                    ]
-                                        , HH.div  [ HP.id "buffer-canvases" ] ( map (bufferCanvas size) $ A.range 0 model.maxInt )
-          ]
+   HH.div [ HP.id "animation-station" ]
+   ( map (bufferCanvas size (fromMaybe (Tick 0) model.time)) $ A.range 0 model.maxInt )
 
 data Query a = ReceiveAction Action a
 
@@ -395,7 +389,7 @@ changeMax power model =
              power = power }
 
 canvasForTick :: Tick -> String
-canvasForTick (Tick t) = canvasId <> "-" <> show t
+canvasForTick (Tick t) = "bubble-canvas-" <> show t
 
 redraw :: Model -> Effect Unit
 redraw model =
@@ -407,27 +401,20 @@ redraw model =
       colorGetter = getColor model.colorCache
       canvasName = canvasForTick (fromMaybe (Tick 0) model.time)
   in do
-    mcanvas <- Ca.getCanvasElementById canvasId
+    mcanvas <- Ca.getCanvasElementById canvasName
     case mcanvas of
       Nothing -> pure unit
       Just canvas -> do
-        ctx <- Ca.getContext2D canvas
-        mbuffer <- Ca.getCanvasElementById canvasName
-        case mbuffer of
-          Nothing -> pure unit
-          Just buffer -> do
+        --Ca.setGlobalAlpha ctx alpha
+        if fromMaybe false ( flip S.member model.drawnBuffers <$> model.time )
+           then pure unit
+           else do
+            ctx <- Ca.getContext2D canvas
             dim <- Ca.getCanvasDimensions canvas
             Ca.clearRect ctx {x: 0.0, y: 0.0, width: dim.width, height: dim.height}
-            --Ca.setGlobalAlpha ctx alpha
-            if fromMaybe false ( flip S.member model.drawnBuffers <$> model.time )
-               then Ca.drawImage ctx (Ca.canvasElementToImageSource buffer) 0.0 0.0
-               else do
-                sequence_ $
-                        A.mapWithIndex (\idx vs -> drawBubbles ctx model oldCoordGetter coordGetter colorGetter model.radius (Tuple idx vs)) model.bubbles
-                bufferCtx <- Ca.getContext2D buffer
-                Ca.clearRect bufferCtx {x: 0.0, y: 0.0, width: dim.width, height: dim.height}
-                Ca.drawImage bufferCtx (Ca.canvasElementToImageSource canvas) 0.0 0.0
-                pure unit
+            sequence_ $
+                    A.mapWithIndex (\idx vs -> drawBubbles ctx model oldCoordGetter coordGetter colorGetter model.radius (Tuple idx vs)) model.bubbles
+            pure unit
 
 redrawStep :: forall action output. H.HalogenM Model action () output Aff Unit
 redrawStep = do
