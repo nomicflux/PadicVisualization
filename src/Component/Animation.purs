@@ -71,3 +71,7 @@ sqrtInterpolate =
 linInterpolate :: forall m. MonadReader Int m =>
                   Maybe Tick -> m (Number -> Number -> Number)
 linInterpolate = interpolate identity
+
+constInterpolate :: forall m. MonadReader Int m =>
+                  Maybe Tick -> m (Number -> Number -> Number)
+constInterpolate = interpolate $ const 0.0

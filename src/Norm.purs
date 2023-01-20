@@ -20,7 +20,7 @@ isPadic (Padic _) = true
 takeNorm :: Norm -> Int -> Rational
 takeNorm _ 0 = fromInt 0
 takeNorm Inf n = fromInt $ abs n
-takeNorm (Padic p) n = 1 % (2 `pow` takeNormPower n)
+takeNorm (Padic p) n = 1 % (p `pow` takeNormPower n)
   where takeNormPower m
           | m `mod` p == 0 = 1 + takeNormPower (m / p)
           | otherwise = 0

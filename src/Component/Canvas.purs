@@ -7,17 +7,14 @@ import Component.Animation (Tick(..), incTick, startTick)
 import Component.Animation as An
 import Component.Bubble as B
 import Control.Monad.Reader as Reader
-import Control.Monad.ST (ST)
-import Control.Monad.ST as ST
 import Data.Array as A
-import Data.Array.ST (STArray)
-import Data.Array.ST as AST
 import Data.Int (round, toNumber, pow)
 import Data.List (List(..), filter, (:))
 import Data.List as L
 import Data.Map (Map)
 import Data.Map as M
 import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Number (exp)
 import Data.Number as Number
 import Data.Rational (Rational, fromInt)
 import Data.Rational as R
@@ -54,7 +51,6 @@ type Model = { maxInt :: Int
              , size :: Int
              , coordType :: CoordType
              , cache :: Map Int Coordinates
-             , colorCache :: Map Int String
              , drawnBuffers :: Set Tick
              , maxTick :: Int
              , animate :: Boolean
@@ -82,7 +78,7 @@ type Input = { size :: Int
              , multBy :: Int
              , quadCoeff :: Int
              , cubeCoeff :: Int
-             , sqrt :: Boolean
+             ,sqrt :: Boolean
              , cbrt :: Boolean
              , trajectoryFrom :: Maybe Int
              }
@@ -102,7 +98,6 @@ initialModel input =
      , size: input.size
      , coordType: input.coordType
      , cache: M.empty
-     , colorCache: M.empty
      , drawnBuffers: S.empty
      , maxTick: input.maxTick
      , animate: true
@@ -125,7 +120,7 @@ getR model value = value / fromInt maxValue
     maxValue = if isPadic model.norm then 1 else model.maxValue
 
 getTheta :: Model -> Int -> Number
-getTheta model value = Number.pi * 2.0 * (toNumber value) / (toNumber model.maxValue)
+getTheta model value = Number.pi * 2.0 * (toNumber value) / (toNumber model.maxInt)
 
 toPolar :: Model -> Int -> PolarCoordinates
 toPolar model n =
@@ -160,10 +155,11 @@ getCoordinates interpolater cache size (Tuple oldValue newValue) =
      , y: interpolater new.y old.y
      }
 
-getColor :: Map Int String ->
+getColor :: (Number -> Number -> Number) ->
+            Model ->
            Tuple Int Int -> String
-getColor cache (Tuple oldValue _newValue) =
-  fromMaybe "#000" $ M.lookup oldValue cache
+getColor interpolater model (Tuple oldValue newValue) =
+  mkColor model $ interpolater (toNumber oldValue) (toNumber newValue)
 
 component :: forall output. H.Component Query Input output Aff
 component = H.mkComponent { initialState: initialModel
@@ -177,17 +173,13 @@ component = H.mkComponent { initialState: initialModel
 square :: Number -> Number
 square n = n * n
 
-mkColor :: Model -> Int -> String
+mkColor :: Model -> Number -> String
 mkColor model value =
-  let p = fromMaybe 1 $ getPrime model.norm
-      divisor = case model.coordType of
-        Circular -> toNumber p
-        PadicVector -> 1.0
-      step = 1.0 / toNumber (model.maxInt + 1)
-      pstep = step * divisor
-      sat = 0.2 + 0.8 * step * toNumber value
-      val = 0.8 + 0.2 * step * toNumber value
-      hue = 360.0 * pstep * toNumber value
+  let scale = (toNumber $ model.maxValue + 1)
+      base =  Number.atan ( Number.log $ value / scale )
+      sat = 1.0 - ( base * 0.4 + 0.6 )
+      val = 1.0 - ( base * 0.6 + 0.4 )
+      hue = 360.0 * base
   in Co.toHexString (Co.hsv hue sat val)
 
 drawCircle :: Ca.Context2D -> Coordinates -> Number -> String -> Effect Unit
@@ -199,17 +191,25 @@ drawCircle ctx coords r color = do
              , start: 0.0, end: 2.0 * Number.pi }
   Ca.setFillStyle ctx color
   Ca.fill ctx
-  Ca.setStrokeStyle ctx color
-  Ca.stroke ctx
   Ca.closePath ctx
 
-drawLine :: Ca.Context2D -> Coordinates -> Coordinates -> Number -> String -> Effect Unit
-drawLine ctx start end r color = do
+foreign import setStrokeGradientStyle :: Ca.Context2D -> Ca.CanvasGradient -> Effect Unit
+
+drawLine :: Ca.Context2D -> Coordinates -> Coordinates -> Number ->
+            String -> String -> Effect Unit
+drawLine ctx start end r startColor endColor = do
+  gradient <- Ca.createLinearGradient ctx { x0: start.x
+                                          , y0: start.y
+                                          , x1: end.x
+                                          , y1: end.y }
+  Ca.addColorStop gradient 0.0 startColor
+  Ca.addColorStop gradient 1.0 endColor
+  setStrokeGradientStyle ctx gradient
+  Ca.setLineWidth ctx r
+
   Ca.beginPath ctx
   Ca.moveTo ctx start.x start.y
-  Ca.setLineWidth ctx r
   Ca.lineTo ctx end.x end.y
-  Ca.setStrokeStyle ctx color
   Ca.stroke ctx
   Ca.closePath ctx
 
@@ -220,30 +220,31 @@ drawBubble :: Ca.Context2D ->
               Model ->
               (Tuple Int Int -> Coordinates) ->
               (Tuple Int Int -> Coordinates) ->
-              (Tuple Int Int -> String) ->
               Int ->
               (Tuple Int Int) ->
               Effect Unit
-drawBubble ctx model oldCoordGetter coordGetter colorGetter radius bubble =
+drawBubble ctx model oldCoordGetter coordGetter radius bubble =
   let coords = coordGetter bubble
       startCoords = oldCoordGetter bubble
-      color = colorGetter bubble
-      (Tuple origin newVal) = bubble
+      linInterp = Reader.runReader (An.linInterpolate model.time) model.maxTick
+      constInterp = Reader.runReader (An.constInterpolate model.time) model.maxTick
+      color = getColor linInterp model bubble
+      startColor = getColor constInterp model bubble
+      (Tuple origin _) = bubble
   in drawCircle ctx coords (toNumber radius) color *>
      (if model.lines || S.member origin model.circuit
-      then drawLine ctx startCoords coords (toNumber radius) color
+      then drawLine ctx startCoords coords (toNumber radius) startColor color
       else pure unit)
 
 drawBubbles :: Ca.Context2D ->
                Model ->
               (Tuple Int Int -> Coordinates) ->
               (Tuple Int Int -> Coordinates) ->
-              (Tuple Int Int -> String) ->
               Int ->
               (Tuple Int (List Int)) ->
               Effect Unit
-drawBubbles ctx model oldCoordGetter coordGetter colorGetter radius bubbles =
-  for_ (distributeTuple bubbles) $ drawBubble ctx model oldCoordGetter coordGetter colorGetter radius
+drawBubbles ctx model oldCoordGetter coordGetter radius bubbles =
+  for_ (distributeTuple bubbles) $ drawBubble ctx model oldCoordGetter coordGetter radius
 
 getSize :: Model -> Int
 getSize model = round $ 4.0 * toNumber model.scale
@@ -299,29 +300,9 @@ bubbleFn model =
       cbrted = if model.cbrt then sqrted >=> B.normCbrt model.norm (3 * model.power) else sqrted
   in cbrted
 
-setFromIdx :: forall h a. STArray h (List a) -> Int -> (Int -> List a) -> ST h Unit
-setFromIdx array idx f = AST.modify idx (const (f idx)) array *> pure unit
-
-incBubble :: forall h. Model -> STArray h (List Int) -> Int -> ST h Unit
-incBubble model bubbles idx =
-  let fn = bubbleFn model
-  in setFromIdx bubbles idx fn
-
 incAll :: Model -> Model
-incAll model =
-  let
-    changer :: forall h. STArray h (List Int) -> Int -> ST h Unit
-    changer = incBubble model
-
-    newBubblesST :: forall h. Array (List Int) -> ST h (Array (List Int))
-    newBubblesST bubbles = do
-      bubblesST <- AST.thaw bubbles
-      _ <- ST.for 0 (A.length bubbles) (changer bubblesST)
-      AST.freeze bubblesST
-    newBubbles = ST.run (newBubblesST model.bubbles)
-  in
-   model { bubbles = newBubbles
-         }
+incAll model = model { bubbles = map (bubbleFn model) $ A.range 0 model.maxInt
+                     }
 
 followTrajectory :: Array (List Int) -> Maybe Int -> Set Int
 followTrajectory lookup x = go (L.fromFoldable x) S.empty
@@ -341,27 +322,26 @@ reinitCache = do
   let
       inputInts = A.range 0 model.maxInt
       outputInts = A.filter (\x -> x > model.maxInt) $ A.concatMap A.fromFoldable model.bubbles
-      maxValue = A.foldl (\acc l -> max acc (L.foldl max 0 l)) 0 model.bubbles
+      maxValue = A.foldl (\acc l -> max acc (L.foldl max model.maxInt l)) model.maxInt model.bubbles
       ints = A.concat [inputInts, outputInts]
       emptyCache :: Map Int Coordinates
       emptyCache = M.empty
-
+      newCircuit = followTrajectory model.bubbles model.trajectoryFrom
+  H.modify_ (_ {  maxValue = maxValue
+               , drawnBuffers = S.empty :: Set Tick
+               , circuit = newCircuit
+               })
+  model <- H.get
+  let
       cache = case model.coordType of
         Circular ->
           A.foldl (\acc x -> M.insert x (getCircleCoord model x) acc) emptyCache ints
         PadicVector ->
           A.foldl (\acc x -> M.insert x (getPadicCoord model x) acc) emptyCache ints
-
-      colorCache = A.foldl (\acc x -> M.insert x (mkColor model x) acc) M.empty ints
-      newCircuit = followTrajectory model.bubbles model.trajectoryFrom
   H.modify_ (_ { cache = cache
-               , colorCache = colorCache
-               , maxValue = maxValue
-               , drawnBuffers = S.empty :: Set Tick
-               , circuit = newCircuit
                })
-  model2 <- H.get
-  H.liftEffect $ redraw model2
+  model <- H.get
+  H.liftEffect $ redraw model
   pure unit
 
 toggleAnimation :: Model -> Model
@@ -395,25 +375,24 @@ redraw :: Model -> Effect Unit
 redraw model =
   let sqrtInterp = Reader.runReader (An.sqrtInterpolate model.time) model.maxTick
       sinInterp = Reader.runReader (An.sinInterpolate model.time) model.maxTick
-      alpha = sinInterp 0.6 0.15
+      alpha = sinInterp 0.6 0.25
       coordGetter = getCoordinates sqrtInterp model.cache (toNumber $ getSize model)
       oldCoordGetter = getCoordinates (\_ y -> y) model.cache (toNumber $ getSize model)
-      colorGetter = getColor model.colorCache
       canvasName = canvasForTick (fromMaybe (Tick 0) model.time)
   in do
     mcanvas <- Ca.getCanvasElementById canvasName
     case mcanvas of
       Nothing -> pure unit
       Just canvas -> do
-        --Ca.setGlobalAlpha ctx alpha
         if fromMaybe false ( flip S.member model.drawnBuffers <$> model.time )
            then pure unit
            else do
             ctx <- Ca.getContext2D canvas
             dim <- Ca.getCanvasDimensions canvas
             Ca.clearRect ctx {x: 0.0, y: 0.0, width: dim.width, height: dim.height}
+            Ca.setGlobalAlpha ctx alpha
             sequence_ $
-                    A.mapWithIndex (\idx vs -> drawBubbles ctx model oldCoordGetter coordGetter colorGetter model.radius (Tuple idx vs)) model.bubbles
+                    A.mapWithIndex (\idx vs -> drawBubbles ctx model oldCoordGetter coordGetter model.radius (Tuple idx vs)) model.bubbles
             pure unit
 
 redrawStep :: forall action output. H.HalogenM Model action () output Aff Unit
