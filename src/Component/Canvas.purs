@@ -14,7 +14,6 @@ import Data.List as L
 import Data.Map (Map)
 import Data.Map as M
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Number (exp)
 import Data.Number as Number
 import Data.Rational (Rational, fromInt)
 import Data.Rational as R
@@ -120,7 +119,7 @@ getR model value = value / fromInt maxValue
     maxValue = if isPadic model.norm then 1 else model.maxValue
 
 getTheta :: Model -> Int -> Number
-getTheta model value = Number.pi * 2.0 * (toNumber value) / (toNumber model.maxInt)
+getTheta model value = Number.tau * (toNumber (value `mod` model.maxInt)) / (toNumber model.maxInt)
 
 toPolar :: Model -> Int -> PolarCoordinates
 toPolar model n =
@@ -144,13 +143,19 @@ getPadicCoord model n =
   let p = fromMaybe 0 (getPrime model.norm)
   in normalizeCoords model $ PV.toVector model.maxValue p n
 
+getCoord :: Model -> Int -> Coordinates
+getCoord model x = case model.coordType of
+    Circular -> getCircleCoord model x
+    PadicVector -> getPadicCoord model x
+
 getCoordinates :: (Number -> Number -> Number) ->
-                  Map Int Coordinates -> Number ->
+                  Map Int Coordinates ->
+                  (Int -> Coordinates) ->
                   Tuple Int Int -> Coordinates
-getCoordinates interpolater cache size (Tuple oldValue newValue) =
+getCoordinates interpolater cache calcer (Tuple oldValue newValue) =
   let mold = M.lookup oldValue cache
-      old = fromMaybe (C.addOffset baseCoordinates {top: size / 2.0, left: size}) mold
-      new = fromMaybe baseCoordinates $ M.lookup newValue cache
+      old = fromMaybe (calcer oldValue) mold
+      new = fromMaybe (calcer newValue) $ M.lookup newValue cache
   in { x: interpolater new.x old.x
      , y: interpolater new.y old.y
      }
@@ -223,8 +228,9 @@ drawBubble :: Ca.Context2D ->
               Int ->
               (Tuple Int Int) ->
               Effect Unit
-drawBubble ctx model oldCoordGetter coordGetter radius bubble =
-  let coords = coordGetter bubble
+drawBubble ctx model oldCoordGetter coordGetter radius (Tuple oldVal newVal) =
+  let bubble = Tuple oldVal (if newVal < 0 then newVal `mod` model.maxValue else newVal)
+      coords = coordGetter bubble
       startCoords = oldCoordGetter bubble
       linInterp = Reader.runReader (An.linInterpolate model.time) model.maxTick
       constInterp = Reader.runReader (An.constInterpolate model.time) model.maxTick
@@ -317,31 +323,25 @@ followTrajectory lookup x = go (L.fromFoldable x) S.empty
 reinitCache :: forall output. H.HalogenM Model Action () output Aff Unit
 reinitCache = do
   H.modify_ regenBubbles
-  H.modify_ incAll
-  model <- H.get
+  incedModel <- H.modify incAll
   let
-      inputInts = A.range 0 model.maxInt
-      outputInts = A.filter (\x -> x > model.maxInt) $ A.concatMap A.fromFoldable model.bubbles
-      maxValue = A.foldl (\acc l -> max acc (L.foldl max model.maxInt l)) model.maxInt model.bubbles
-      ints = A.concat [inputInts, outputInts]
-      emptyCache :: Map Int Coordinates
-      emptyCache = M.empty
-      newCircuit = followTrajectory model.bubbles model.trajectoryFrom
-  H.modify_ (_ {  maxValue = maxValue
-               , drawnBuffers = S.empty :: Set Tick
-               , circuit = newCircuit
-               })
-  model <- H.get
+      inputInts = A.range 0 incedModel.maxInt
+      outputInts = A.concatMap A.fromFoldable incedModel.bubbles
+      ints = A.nub $ inputInts <> outputInts
+      maxValue = A.foldl max incedModel.maxInt ints
+      newCircuit = followTrajectory incedModel.bubbles incedModel.trajectoryFrom
+  modelWithInts <- H.modify (_ { maxValue = maxValue
+                               , drawnBuffers = S.empty :: Set Tick
+                               , circuit = newCircuit
+                               })
   let
-      cache = case model.coordType of
-        Circular ->
-          A.foldl (\acc x -> M.insert x (getCircleCoord model x) acc) emptyCache ints
-        PadicVector ->
-          A.foldl (\acc x -> M.insert x (getPadicCoord model x) acc) emptyCache ints
-  H.modify_ (_ { cache = cache
-               })
-  model <- H.get
-  H.liftEffect $ redraw model
+    emptyCache :: Map Int Coordinates
+    emptyCache = M.empty
+
+    cache = A.foldl (\acc x -> M.insert x (getCoord modelWithInts x) acc) emptyCache ints
+  modelWithCache <- H.modify (_ { cache = cache
+                                })
+  H.liftEffect $ redraw modelWithCache
   pure unit
 
 toggleAnimation :: Model -> Model
@@ -376,8 +376,9 @@ redraw model =
   let sqrtInterp = Reader.runReader (An.sqrtInterpolate model.time) model.maxTick
       sinInterp = Reader.runReader (An.sinInterpolate model.time) model.maxTick
       alpha = sinInterp 0.6 0.25
-      coordGetter = getCoordinates sqrtInterp model.cache (toNumber $ getSize model)
-      oldCoordGetter = getCoordinates (\_ y -> y) model.cache (toNumber $ getSize model)
+      calcer = getCoord model
+      coordGetter = getCoordinates sqrtInterp model.cache calcer
+      oldCoordGetter = getCoordinates (\_ y -> y) model.cache calcer
       canvasName = canvasForTick (fromMaybe (Tick 0) model.time)
   in do
     mcanvas <- Ca.getCanvasElementById canvasName

@@ -3,7 +3,7 @@ module PadicVector where
 import Data.Eq ((==))
 import Data.FunctorWithIndex (mapWithIndex)
 import Data.Int (pow, toNumber)
-import Data.List (List)
+import Data.List (List, (:))
 import Data.List as L
 import Data.List.Lazy as LL
 import Data.Monoid ((<>))
@@ -19,7 +19,7 @@ padicRep p x = go x
      | y == 0 = L.singleton 0
      | otherwise =
        let m = y `mod` p
-       in L.Cons m (go ((y - m) / p))
+       in m : (go ((y - m) / p))
 
 addCoords :: Coordinates -> Coordinates -> Coordinates
 addCoords a b = { x: a.x + b.x
@@ -44,5 +44,5 @@ baseCoordinates = {x: 0.0, y: 0.0}
 toVector :: Int -> Int -> Int -> Coordinates
 toVector max p x =
   let maxP = padicRep p max
-      cl = toCoordList (L.length maxP) p x
+      cl = toCoordList (L.length maxP + 1) p x
   in L.foldl (\acc next -> addCoords acc (polarToCartesian next)) baseCoordinates cl
