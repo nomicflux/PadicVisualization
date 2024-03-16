@@ -9044,19 +9044,35 @@
   var foldl5 = /* @__PURE__ */ foldl(foldableList);
   var padicRep = function(p2) {
     return function(x) {
-      var go2 = function(y) {
-        if (y === 0) {
-          return singleton5(0);
-        }
-        ;
-        if (otherwise) {
-          var m = mod4(y)(p2);
-          return new Cons(m, go2(div5(y - m | 0)(p2)));
-        }
-        ;
-        throw new Error("Failed pattern match at PadicVector (line 18, column 4 - line 22, column 33): " + [y.constructor.name]);
+      var go2 = function($copy_acc) {
+        return function($copy_y) {
+          var $tco_var_acc = $copy_acc;
+          var $tco_done = false;
+          var $tco_result;
+          function $tco_loop(acc, y) {
+            if (y === 0) {
+              $tco_done = true;
+              return new Cons(0, acc);
+            }
+            ;
+            if (otherwise) {
+              var m = mod4(y)(p2);
+              $tco_var_acc = new Cons(m, acc);
+              $copy_y = div5(y - m | 0)(p2);
+              return;
+            }
+            ;
+            throw new Error("Failed pattern match at PadicVector (line 18, column 4 - line 22, column 37): " + [acc.constructor.name, y.constructor.name]);
+          }
+          ;
+          while (!$tco_done) {
+            $tco_result = $tco_loop($tco_var_acc, $copy_y);
+          }
+          ;
+          return $tco_result;
+        };
       };
-      return go2(x);
+      return reverse2(go2(Nil.value)(x));
     };
   };
   var calcStep = function(p2) {
@@ -9352,7 +9368,6 @@
       bubbles: model.bubbles,
       time: model.time,
       size: model.size,
-      coordType: newRepr,
       cache: model.cache,
       drawnBuffers: model.drawnBuffers,
       maxTick: model.maxTick,
@@ -9367,7 +9382,8 @@
       sqrt: model.sqrt,
       cbrt: model.cbrt,
       circuit: model.circuit,
-      trajectoryFrom: model.trajectoryFrom
+      trajectoryFrom: model.trajectoryFrom,
+      coordType: newRepr
     };
   };
   var toggleLines = function(model) {
@@ -9384,7 +9400,6 @@
       drawnBuffers: model.drawnBuffers,
       maxTick: model.maxTick,
       animate: model.animate,
-      lines: !model.lines,
       scale: model.scale,
       radius: model.radius,
       addTo: model.addTo,
@@ -9394,7 +9409,8 @@
       sqrt: model.sqrt,
       cbrt: model.cbrt,
       circuit: model.circuit,
-      trajectoryFrom: model.trajectoryFrom
+      trajectoryFrom: model.trajectoryFrom,
+      lines: !model.lines
     };
   };
   var toggleAnimation = function(model) {
@@ -9410,7 +9426,6 @@
       cache: model.cache,
       drawnBuffers: model.drawnBuffers,
       maxTick: model.maxTick,
-      animate: !model.animate,
       lines: model.lines,
       scale: model.scale,
       radius: model.radius,
@@ -9421,7 +9436,8 @@
       sqrt: model.sqrt,
       cbrt: model.cbrt,
       circuit: model.circuit,
-      trajectoryFrom: model.trajectoryFrom
+      trajectoryFrom: model.trajectoryFrom,
+      animate: !model.animate
     };
   };
   var normalizeCoords = function(model) {
@@ -9452,7 +9468,6 @@
       maxValue: model.maxValue,
       power: model.power,
       norm: model.norm,
-      bubbles: mkBubbles(model.maxInt),
       time: model.time,
       size: model.size,
       coordType: model.coordType,
@@ -9470,7 +9485,8 @@
       sqrt: model.sqrt,
       cbrt: model.cbrt,
       circuit: model.circuit,
-      trajectoryFrom: model.trajectoryFrom
+      trajectoryFrom: model.trajectoryFrom,
+      bubbles: mkBubbles(model.maxInt)
     };
   };
   var initialModel = function(input3) {
@@ -9735,9 +9751,7 @@
         throw new Error("Failed pattern match at Component.Canvas (line 365, column 11 - line 367, column 17): " + [model.norm.constructor.name]);
       }();
       return {
-        maxInt: pow(x)(power) - 1 | 0,
         maxValue: model.maxValue,
-        power,
         norm: model.norm,
         bubbles: model.bubbles,
         time: model.time,
@@ -9757,7 +9771,9 @@
         sqrt: model.sqrt,
         cbrt: model.cbrt,
         circuit: model.circuit,
-        trajectoryFrom: model.trajectoryFrom
+        trajectoryFrom: model.trajectoryFrom,
+        maxInt: pow(x)(power) - 1 | 0,
+        power
       };
     };
   };
@@ -9899,7 +9915,6 @@
       maxValue: model.maxValue,
       power: model.power,
       norm: model.norm,
-      bubbles: map15(bubbleFn(model))(range(0)(model.maxInt)),
       time: model.time,
       size: model.size,
       coordType: model.coordType,
@@ -9917,7 +9932,8 @@
       sqrt: model.sqrt,
       cbrt: model.cbrt,
       circuit: model.circuit,
-      trajectoryFrom: model.trajectoryFrom
+      trajectoryFrom: model.trajectoryFrom,
+      bubbles: map15(bubbleFn(model))(range(0)(model.maxInt))
     };
   };
   var reinitCache = /* @__PURE__ */ discard22(/* @__PURE__ */ modify_3(regenBubbles))(function() {
@@ -9929,9 +9945,6 @@
       var maxValue = foldl2(max3)(incedModel.maxInt)(ints);
       return bind12(modify5(function(v) {
         return {
-          maxValue,
-          drawnBuffers: empty3,
-          circuit: newCircuit,
           addTo: v.addTo,
           animate: v.animate,
           bubbles: v.bubbles,
@@ -9951,7 +9964,10 @@
           size: v.size,
           sqrt: v.sqrt,
           time: v.time,
-          trajectoryFrom: v.trajectoryFrom
+          trajectoryFrom: v.trajectoryFrom,
+          maxValue,
+          drawnBuffers: empty3,
+          circuit: newCircuit
         };
       }))(function(modelWithInts) {
         var cache = foldl2(function(acc) {
@@ -9961,7 +9977,6 @@
         })(empty2)(ints);
         return bind12(modify5(function(v) {
           return {
-            cache,
             addTo: v.addTo,
             animate: v.animate,
             bubbles: v.bubbles,
@@ -9983,7 +9998,8 @@
             size: v.size,
             sqrt: v.sqrt,
             time: v.time,
-            trajectoryFrom: v.trajectoryFrom
+            trajectoryFrom: v.trajectoryFrom,
+            cache
           };
         }))(function(modelWithCache) {
           return discard22(liftEffect3(redraw(modelWithCache)))(function() {
@@ -10290,11 +10306,11 @@
       initialState: initialModel,
       render,
       "eval": mkEval({
+        receive: defaultEval.receive,
+        finalize: defaultEval.finalize,
         handleAction,
         handleQuery,
-        receive: defaultEval.receive,
-        initialize: new Just(InitCaches.value),
-        finalize: defaultEval.finalize
+        initialize: new Just(InitCaches.value)
       })
     });
   }();
@@ -10951,11 +10967,11 @@
       initialState: $$const(unit),
       render: render2,
       "eval": mkEval({
-        handleAction: handleAction2,
-        handleQuery: handleQuery2,
         receive: defaultEval.receive,
         initialize: defaultEval.initialize,
-        finalize: defaultEval.finalize
+        finalize: defaultEval.finalize,
+        handleAction: handleAction2,
+        handleQuery: handleQuery2
       })
     });
   }();
@@ -11289,7 +11305,6 @@
                 if (otherwise) {
                   return discard1(liftEffect5(write({
                     component: v2.component,
-                    state: v3.value1,
                     refs: v2.refs,
                     children: v2.children,
                     childrenIn: v2.childrenIn,
@@ -11303,7 +11318,8 @@
                     fresh: v2.fresh,
                     subscriptions: v2.subscriptions,
                     forks: v2.forks,
-                    lifecycleHandlers: v2.lifecycleHandlers
+                    lifecycleHandlers: v2.lifecycleHandlers,
+                    state: v3.value1
                   })(ref2)))(function() {
                     return discard1(handleLifecycle(v2.lifecycleHandlers)(render3(v2.lifecycleHandlers)(ref2)))(function() {
                       return pure9(v3.value0);
@@ -11420,7 +11436,6 @@
             return {
               component: st.component,
               state: st.state,
-              refs: alter2($$const(v.value1))(v.value0)(st.refs),
               children: st.children,
               childrenIn: st.childrenIn,
               childrenOut: st.childrenOut,
@@ -11433,7 +11448,8 @@
               fresh: st.fresh,
               subscriptions: st.subscriptions,
               forks: st.forks,
-              lifecycleHandlers: st.lifecycleHandlers
+              lifecycleHandlers: st.lifecycleHandlers,
+              refs: alter2($$const(v.value1))(v.value0)(st.refs)
             };
           })));
         }
@@ -11651,7 +11667,6 @@
                   component: ds$prime.component,
                   state: ds$prime.state,
                   refs: ds$prime.refs,
-                  children: children2,
                   childrenIn: ds$prime.childrenIn,
                   childrenOut: ds$prime.childrenOut,
                   selfRef: ds$prime.selfRef,
@@ -11659,11 +11674,12 @@
                   pendingQueries: ds$prime.pendingQueries,
                   pendingOuts: ds$prime.pendingOuts,
                   pendingHandlers: ds$prime.pendingHandlers,
-                  rendering: new Just(rendering),
                   fresh: ds$prime.fresh,
                   subscriptions: ds$prime.subscriptions,
                   forks: ds$prime.forks,
-                  lifecycleHandlers: ds$prime.lifecycleHandlers
+                  lifecycleHandlers: ds$prime.lifecycleHandlers,
+                  rendering: new Just(rendering),
+                  children: children2
                 };
               }))();
               return when3(shouldProcessHandlers)(flip(tailRecM3)(unit)(function(v1) {

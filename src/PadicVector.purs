@@ -13,13 +13,13 @@ import PolarCoordinates (PolarCoordinates, mkPolar, polarToCartesian)
 import Prelude (mod, otherwise, (*), (+), (-), (/))
 
 padicRep :: Int -> Int -> List Int
-padicRep p x = go x
+padicRep p x = L.reverse (go L.Nil x)
  where
-   go y
-     | y == 0 = L.singleton 0
+   go acc y
+     | y == 0 = 0 : acc
      | otherwise =
        let m = y `mod` p
-       in m : (go ((y - m) / p))
+       in go (m : acc) ((y - m) / p)
 
 addCoords :: Coordinates -> Coordinates -> Coordinates
 addCoords a b = { x: a.x + b.x
