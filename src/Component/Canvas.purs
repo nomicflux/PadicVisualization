@@ -19,9 +19,9 @@ import Data.Rational (Rational, fromInt)
 import Data.Rational as R
 import Data.Set (Set)
 import Data.Set as S
-import Data.Traversable (for_, sequence_)
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
+import Effect as Eff
 import Effect.Aff (Aff)
 import Graphics.Canvas as Ca
 import Halogen as H
@@ -30,7 +30,6 @@ import Halogen.HTML.Properties as HP
 import HalogenHelpers.Coordinates (Coordinates)
 import HalogenHelpers.Coordinates as C
 import Norm (Norm(..), getPrime, isPadic, takeNorm)
-import PadicVector (baseCoordinates)
 import PadicVector as PV
 import PolarCoordinates (PolarCoordinates)
 import PolarCoordinates as PC
@@ -187,16 +186,17 @@ mkColor model value =
       hue = 360.0 * base
   in Co.toHexString (Co.hsv hue sat val)
 
-drawCircle :: Ca.Context2D -> Coordinates -> Number -> String -> Effect Unit
-drawCircle ctx coords r color = do
-  Ca.beginPath ctx
-  Ca.moveTo ctx coords.x coords.y
+drawCircle :: Ca.Context2D -> Number -> String -> Coordinates -> Effect Unit
+drawCircle ctx r color coords = 
+  Ca.beginPath ctx <*
+  Ca.moveTo ctx coords.x coords.y <*
   Ca.arc ctx { x: coords.x, y: coords.y
              , radius: r, useCounterClockwise: true
-             , start: 0.0, end: 2.0 * Number.pi }
-  Ca.setFillStyle ctx color
-  Ca.fill ctx
-  Ca.closePath ctx
+             , start: 0.0, end: 2.0 * Number.pi } <*
+  Ca.setFillStyle ctx color <*
+  Ca.fill ctx <*
+  Ca.closePath ctx <*
+  pure unit
 
 foreign import setStrokeGradientStyle :: Ca.Context2D -> Ca.CanvasGradient -> Effect Unit
 
@@ -217,6 +217,7 @@ drawLine ctx start end r startColor endColor = do
   Ca.lineTo ctx end.x end.y
   Ca.stroke ctx
   Ca.closePath ctx
+  pure unit
 
 distributeTuple :: (Tuple Int (List Int)) -> List (Tuple Int Int)
 distributeTuple (Tuple a bs) = (\b -> Tuple a b) <$> bs
@@ -225,10 +226,11 @@ drawBubble :: Ca.Context2D ->
               Model ->
               (Tuple Int Int -> Coordinates) ->
               (Tuple Int Int -> Coordinates) ->
-              Int ->
+              Number ->
+              (String -> Coordinates -> Effect Unit) ->
               (Tuple Int Int) ->
               Effect Unit
-drawBubble ctx model oldCoordGetter coordGetter radius (Tuple oldVal newVal) =
+drawBubble ctx model oldCoordGetter coordGetter radius drawFn (Tuple oldVal newVal) =
   let bubble = Tuple oldVal (if newVal < 0 then newVal `mod` model.maxValue else newVal)
       coords = coordGetter bubble
       startCoords = oldCoordGetter bubble
@@ -237,9 +239,9 @@ drawBubble ctx model oldCoordGetter coordGetter radius (Tuple oldVal newVal) =
       color = getColor linInterp model bubble
       startColor = getColor constInterp model bubble
       (Tuple origin _) = bubble
-  in drawCircle ctx coords (toNumber radius) color *>
+  in drawFn color coords *>
      (if model.lines || S.member origin model.circuit
-      then drawLine ctx startCoords coords (toNumber radius) startColor color
+      then drawLine ctx startCoords coords radius startColor color
       else pure unit)
 
 drawBubbles :: Ca.Context2D ->
@@ -247,10 +249,18 @@ drawBubbles :: Ca.Context2D ->
               (Tuple Int Int -> Coordinates) ->
               (Tuple Int Int -> Coordinates) ->
               Int ->
-              (Tuple Int (List Int)) ->
+              Array (List (Tuple Int Int)) ->
               Effect Unit
 drawBubbles ctx model oldCoordGetter coordGetter radius bubbles =
-  for_ (distributeTuple bubbles) $ drawBubble ctx model oldCoordGetter coordGetter radius
+  let drawFn = drawCircle ctx (toNumber radius)
+  in Eff.foreachE bubbles $ \bubbleList ->
+    Eff.foreachE (A.fromFoldable bubbleList) $
+    drawBubble ctx 
+      model 
+      oldCoordGetter 
+      coordGetter 
+      (toNumber radius) 
+      drawFn
 
 getSize :: Model -> Int
 getSize model = round $ 4.0 * toNumber model.scale
@@ -392,8 +402,10 @@ redraw model =
             dim <- Ca.getCanvasDimensions canvas
             Ca.clearRect ctx {x: 0.0, y: 0.0, width: dim.width, height: dim.height}
             Ca.setGlobalAlpha ctx alpha
-            sequence_ $
-                    A.mapWithIndex (\idx vs -> drawBubbles ctx model oldCoordGetter coordGetter model.radius (Tuple idx vs)) model.bubbles
+            drawBubbles ctx model oldCoordGetter coordGetter model.radius $
+              A.mapWithIndex 
+                (\idx vs -> distributeTuple (Tuple idx vs)) 
+                model.bubbles
             pure unit
 
 redrawStep :: forall action output. H.HalogenM Model action () output Aff Unit
